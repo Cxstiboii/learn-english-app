@@ -47,7 +47,24 @@ function validateQuestionOptions(
 const questionWithPatternSchema = exerciseQuestionFieldsSchema.extend({
   focusPatternId: z.string().uuid().nullable(),
 }).superRefine(validateQuestionOptions)
-const generatedQuestionSchema = questionWithPatternSchema
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function normalizeGeneratedExerciseQuestion(value: unknown): unknown {
+  if (!isRecord(value)) return value
+
+  const { question, ...rest } = value
+  if (typeof question !== 'string') return value
+  if (typeof rest.prompt === 'string') return rest
+  return { ...rest, prompt: question }
+}
+
+const generatedQuestionSchema = z.preprocess(
+  normalizeGeneratedExerciseQuestion,
+  questionWithPatternSchema,
+)
 const storedQuestionSchema = questionWithPatternSchema
 
 const profileLevelSchema = z.enum(['A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'C1', 'C2'])
