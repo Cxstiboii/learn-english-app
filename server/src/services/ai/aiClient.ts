@@ -321,10 +321,11 @@ export async function generateJSON<T>({
   maxTokens,
 }: GenerateJSONInput<T>): Promise<T> {
   const jsonSystem = `${system}\n\nReturn only valid JSON. Do not include markdown, code fences, or any text outside the JSON value.`
+  let failureReason = ''
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const retrySystem = attempt === 0
       ? jsonSystem
-      : `${jsonSystem}\nYour previous response did not match the required JSON format. Correct it and return only valid JSON.`
+      : `${jsonSystem}\nYour previous response failed validation:\n${failureReason}\nCorrect these issues and return only valid JSON.`
     const response = await generateText({
       system: retrySystem,
       messages,
@@ -332,15 +333,27 @@ export async function generateJSON<T>({
       jsonMode: true,
     })
 
+    let parsed: unknown
     try {
-      const parsed: unknown = JSON.parse(response)
-      const validation = schema.safeParse(parsed)
-      if (validation.success) return validation.data
+      parsed = JSON.parse(response)
     } catch {
+      failureReason = 'The response was not valid JSON.'
       continue
     }
+
+    const validation = schema.safeParse(parsed)
+    if (validation.success) return validation.data
+
+    failureReason = validation.error.issues
+      .map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`)
+      .join('\n')
   }
 
+  console.warn('[ai] generated JSON failed validation', {
+    provider: config.AI_PROVIDER,
+    model: config.AI_MODEL,
+    reason: failureReason,
+  })
   throw new AIServiceError(
     502,
     'AI_INVALID_JSON',

@@ -10,16 +10,20 @@ process.env.AI_MODEL = 'gemini-3.5-flash-lite'
 
 const { generateJSON } = await import('./aiClient.js')
 
-test('Google JSON generation requests an application/json response', async () => {
+test('Google JSON generation requests JSON and retries with validation issues', async () => {
   const originalFetch = globalThis.fetch
-  let requestBody: Record<string, unknown> | undefined
+  const requestBodies: Record<string, unknown>[] = []
+  const responses = [
+    '{"answer":42}',
+    '{"answer":"ready"}',
+  ]
 
   globalThis.fetch = async (_input, init) => {
-    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+    requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
     return new Response(JSON.stringify({
       candidates: [{
         content: {
-          parts: [{ text: '{"answer":"ready"}' }],
+          parts: [{ text: responses.shift() }],
         },
       }],
     }), {
@@ -36,10 +40,16 @@ test('Google JSON generation requests an application/json response', async () =>
     })
 
     assert.deepEqual(result, { answer: 'ready' })
-    const generationConfig = requestBody?.generationConfig as
-      | Record<string, unknown>
-      | undefined
-    assert.equal(generationConfig?.responseMimeType, 'application/json')
+    assert.equal(requestBodies.length, 2)
+    for (const requestBody of requestBodies) {
+      const generationConfig = requestBody.generationConfig as Record<string, unknown>
+      assert.equal(generationConfig.responseMimeType, 'application/json')
+    }
+
+    const secondSystemInstruction = requestBodies[1].systemInstruction as {
+      parts: Array<{ text: string }>
+    }
+    assert.match(secondSystemInstruction.parts[0].text, /answer.*string/i)
   } finally {
     globalThis.fetch = originalFetch
   }
