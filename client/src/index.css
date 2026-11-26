@@ -1,0 +1,192 @@
+@import "tailwindcss";
+
+@theme {
+  --color-accent: #c85a32;
+  --color-success: #1b4d3e;
+  --color-on-success: #ffffff;
+  --color-success-container: #baeed9;
+  --color-on-success-container: #002117;
+  --color-warning: #a23e18;
+  --color-on-warning: #ffffff;
+  --color-warning-container: #ffdbcf;
+  --color-on-warning-container: #390c00;
+
+  --color-light-primary: #003629;
+  --color-light-on-primary: #ffffff;
+  --color-light-primary-container: #1b4d3e;
+  --color-light-on-primary-container: #8abda9;
+  --color-light-secondary: #a23e18;
+  --color-light-on-secondary: #ffffff;
+  --color-light-secondary-container: #fe8357;
+  --color-light-on-secondary-container: #6f2000;
+  --color-light-tertiary: #4c221c;
+  --color-light-on-tertiary: #ffffff;
+  --color-light-tertiary-container: #673831;
+  --color-light-on-tertiary-container: #e4a399;
+  --color-light-error: #ba1a1a;
+  --color-light-on-error: #ffffff;
+  --color-light-error-container: #ffdad6;
+  --color-light-on-error-container: #93000a;
+  --color-light-background: #fbf9f4;
+  --color-light-on-background: #1b1c19;
+  --color-light-surface: #fbf9f4;
+  --color-light-surface-dim: #dbdad5;
+  --color-light-surface-bright: #fbf9f4;
+  --color-light-surface-container-lowest: #ffffff;
+  --color-light-surface-container-low: #f5f3ee;
+  --color-light-surface-container: #f0eee9;
+  --color-light-surface-container-high: #eae8e3;
+  --color-light-surface-container-highest: #e4e2dd;
+  --color-light-on-surface: #1b1c19;
+  --color-light-surface-variant: #dce5df;
+  --color-light-on-surface-variant: #404945;
+  --color-light-outline: #707974;
+  --color-light-outline-variant: #c0c9c3;
+  --color-light-inverse-surface: #30312e;
+  --color-light-inverse-on-surface: #f2f1ec;
+  --color-light-inverse-primary: #9ed1bd;
+
+  --color-dark-primary: #9ed1bd;
+  --color-dark-on-primary: #00382a;
+  --color-dark-primary-container: #1b4d3e;
+  --color-dark-on-primary-container: #8abda9;
+  --color-dark-secondary: #ffb59c;
+  --color-dark-on-secondary: #5c1900;
+  --color-dark-secondary-container: #852a03;
+  --color-dark-on-secondary-container: #ffa080;
+  --color-dark-tertiary: #fab6ac;
+  --color-dark-on-tertiary: #4e241e;
+  --color-dark-tertiary-container: #673831;
+  --color-dark-on-tertiary-container: #e4a399;
+  --color-dark-error: #ffb4ab;
+  --color-dark-on-error: #690005;
+  --color-dark-error-container: #93000a;
+  --color-dark-on-error-container: #ffdad6;
+  --color-dark-background: #131411;
+  --color-dark-on-background: #e4e2dd;
+  --color-dark-surface: #131411;
+  --color-dark-surface-dim: #131411;
+  --color-dark-surface-bright: #393936;
+  --color-dark-surface-container-lowest: #0e0e0c;
+  --color-dark-surface-container-low: #1b1c19;
+  --color-dark-surface-container: #1f201d;
+  --color-dark-surface-container-high: #2a2a27;
+  --color-dark-surface-container-highest: #353532;
+  --color-dark-on-surface: #e4e2dd;
+  --color-dark-surface-variant: #404945;
+  --color-dark-on-surface-variant: #c0c9c3;
+  --color-dark-outline: #8a938e;
+  --color-dark-outline-variant: #404945;
+  --color-dark-inverse-surface: #e4e2dd;
+  --color-dark-inverse-on-surface: #30312e;
+  --color-dark-inverse-primary: #376757;
+
+  --font-display: "Space Grotesk", sans-serif;
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-title: "Space Grotesk", sans-serif;
+  --font-body: "Geist", sans-serif;
+  --font-label: "Geist", sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  --text-display-lg: 40px;
+  --text-display-lg--line-height: 46px;
+  --text-display-lg--letter-spacing: -0.75px;
+  --text-display-lg--font-weight: 700;
+  --text-display-lg-mobile: 28px;
+  --text-display-lg-mobile--line-height: 34px;
+  --text-display-lg-mobile--letter-spacing: -0.5px;
+  --text-display-lg-mobile--font-weight: 700;
+  --text-headline-lg: 28px;
+  --text-headline-lg--line-height: 34px;
+  --text-headline-lg--letter-spacing: -0.4px;
+  --text-headline-lg--font-weight: 600;
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 26px;
+  --text-headline-md--letter-spacing: -0.2px;
+  --text-headline-md--font-weight: 600;
+  --text-title-md: 16px;
+  --text-title-md--line-height: 22px;
+  --text-title-md--font-weight: 600;
+  --text-body-lg: 16px;
+  --text-body-lg--line-height: 24px;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 21px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-label-lg: 14px;
+  --text-label-lg--line-height: 20px;
+  --text-label-lg--font-weight: 500;
+  --text-label-md: 12px;
+  --text-label-md--line-height: 16px;
+  --text-label-md--letter-spacing: 0.2px;
+  --text-label-md--font-weight: 500;
+  --text-label-sm: 11px;
+  --text-label-sm--line-height: 14px;
+  --text-label-sm--letter-spacing: 0.4px;
+  --text-label-sm--font-weight: 500;
+  --text-mono-md: 13px;
+  --text-mono-md--line-height: 18px;
+  --text-mono-md--font-weight: 500;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-default: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --spacing-gutter-xs: 4px;
+  --spacing-gutter-sm: 8px;
+  --spacing-gutter-md: 16px;
+  --spacing-gutter-lg: 24px;
+  --spacing-gutter-xl: 32px;
+  --spacing-section: 48px;
+  --spacing-page-margin: 24px;
+
+  --duration-state-change: 120ms;
+  --duration-surface-enter: 180ms;
+  --duration-surface-exit: 120ms;
+  --delay-state-change: 0ms;
+  --delay-surface-enter: 0ms;
+  --delay-surface-exit: 0ms;
+  --ease-state-change: ease-out;
+  --ease-surface-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-surface-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+
+:root {
+  font-family: var(--font-body);
+  color: var(--color-light-on-surface);
+  background: var(--color-light-background);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
