@@ -8,7 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/services/srs.test.ts src/services/streak.test.ts"
+    "test": "tsx --test src/services/srs.test.ts src/services/streak.test.ts src/services/ai/aiClient.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",

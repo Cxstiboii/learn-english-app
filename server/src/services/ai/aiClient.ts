@@ -10,6 +10,7 @@ export type GenerateTextInput = {
   system: string
   messages: AIMessage[]
   maxTokens?: number
+  jsonMode?: boolean
 }
 
 export type GenerateJSONInput<T> = GenerateTextInput & {
@@ -141,6 +142,7 @@ function getProviderRequest(
   system: string,
   messages: AIMessage[],
   maxTokens: number,
+  jsonMode: boolean,
 ): ProviderRequest {
   const provider = config.AI_PROVIDER?.trim().toLowerCase()
   const apiKey = config.AI_API_KEY
@@ -199,7 +201,10 @@ function getProviderRequest(
           role: role === 'assistant' ? 'model' : 'user',
           parts: [{ text: content }],
         })),
-        generationConfig: { maxOutputTokens: maxTokens },
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+        },
       },
       parse: parseGoogleResponse,
     }
@@ -224,6 +229,7 @@ export async function generateText({
   system,
   messages,
   maxTokens = defaultMaxTokens,
+  jsonMode = false,
 }: GenerateTextInput): Promise<string> {
   const tokenLimit = Math.min(Math.max(1, Math.floor(maxTokens)), maxMaxTokens)
   const providerRequest = getProviderRequest(
@@ -233,6 +239,7 @@ export async function generateText({
       content: message.role === 'user' ? delimitStudentText(message.content) : message.content,
     })),
     tokenLimit,
+    jsonMode,
   )
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), requestTimeoutMs)
@@ -322,6 +329,7 @@ export async function generateJSON<T>({
       system: retrySystem,
       messages,
       maxTokens,
+      jsonMode: true,
     })
 
     try {
