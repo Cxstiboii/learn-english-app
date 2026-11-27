@@ -8,9 +8,13 @@ import { chatWithTutor, toChatError } from '../services/chatService.js'
 import { activityRouter } from './activity.js'
 import { exercisesRouter } from './exercises.js'
 import { interviewRouter } from './interview.js'
+import { onboardingRouter } from './onboarding.js'
+import { placementRouter } from './placement.js'
 import { pathRouter } from './path.js'
 import { progressRouter } from './progress.js'
+import { preferencesRouter } from './preferences.js'
 import { speakingRouter } from './speaking.js'
+import { suggestionsRouter } from './suggestions.js'
 import { vocabRouter } from './vocab.js'
 import { writingRouter } from './writing.js'
 
@@ -35,9 +39,13 @@ apiRouter.use('/exercises', exercisesRouter)
 apiRouter.use('/speaking', speakingRouter)
 apiRouter.use('/writing', writingRouter)
 apiRouter.use('/interview', interviewRouter)
+apiRouter.use('/onboarding', onboardingRouter)
+apiRouter.use('/placement', placementRouter)
 apiRouter.use('/vocab', vocabRouter)
 apiRouter.use('/activity', activityRouter)
 apiRouter.use('/progress', progressRouter)
+apiRouter.use('/preferences', preferencesRouter)
+apiRouter.use('/suggestions', suggestionsRouter)
 apiRouter.use('/path', pathRouter)
 
 apiRouter.get('/me', requireAuth, async (request, response, next) => {

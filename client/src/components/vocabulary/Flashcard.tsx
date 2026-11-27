@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Badge, Button, Card } from '../ui'
 import type { VocabCard, ReviewRating } from '../../services/vocab'
+import type { Accent } from '../../types/onboarding'
 
 interface FlashcardProps {
   card: VocabCard
@@ -10,6 +11,7 @@ interface FlashcardProps {
   isReviewing: boolean
   onRate: (rating: ReviewRating) => void
   onReveal: () => void
+  accent?: Accent
 }
 
 const ratings: Array<{ id: ReviewRating; label: string }> = [
@@ -34,6 +36,7 @@ export function Flashcard({
   isRevealed,
   onRate,
   onReveal,
+  accent,
   totalCards,
 }: FlashcardProps) {
   useEffect(() => () => {
@@ -41,9 +44,11 @@ export function Flashcard({
   }, [])
 
   function speakTerm() {
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
+    if (!accent || !('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
     window.speechSynthesis.cancel()
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(card.term))
+    const utterance = new SpeechSynthesisUtterance(card.term)
+    utterance.lang = accent === 'uk' ? 'en-GB' : 'en-US'
+    window.speechSynthesis.speak(utterance)
   }
 
   return (
@@ -58,6 +63,7 @@ export function Flashcard({
           </div>
           <Button
             aria-label={`Listen to ${card.term}`}
+            disabled={!accent}
             onClick={speakTerm}
             size="icon"
             variant="secondary"

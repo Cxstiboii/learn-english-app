@@ -4,6 +4,7 @@ import { ActivityItem } from './ActivityItem'
 
 interface UnitCardProps {
   unit: Unit
+  isRecommended?: boolean
   isExpanded: boolean
   selectedActivityId: string | null
   onToggle: (unitId: string) => void
@@ -20,6 +21,7 @@ const statusVariants: Record<UnitStatus, 'neutral' | 'success' | 'warning'> = {
 
 export function UnitCard({
   unit,
+  isRecommended = false,
   isExpanded,
   selectedActivityId,
   onToggle,
@@ -67,6 +69,7 @@ export function UnitCard({
               <Badge variant={statusVariants[unit.status]}>
                 {unit.status} · {completedActivities}/{unit.activities.length}
               </Badge>
+              {isRecommended && <Badge variant="success">Recommended for you</Badge>}
             </span>
             <span className="font-title text-title-md text-light-on-surface">{unit.title}</span>
             <span className="font-body text-body-sm text-light-on-surface-variant">

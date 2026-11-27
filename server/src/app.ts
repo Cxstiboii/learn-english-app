@@ -11,7 +11,7 @@ app.use(cors({
   origin: (origin, callback) => {
     callback(null, origin === config.CLIENT_ORIGIN)
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
   allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
 }))
 app.use(express.json({ limit: '96kb' }))

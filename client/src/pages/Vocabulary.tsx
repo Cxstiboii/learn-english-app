@@ -11,6 +11,7 @@ import {
   useVocabStats,
 } from '../hooks/useVocab'
 import type { ReviewRating, VocabCard } from '../services/vocab'
+import { useLearnerSettings } from '../hooks/useLearnerSettings'
 
 const noDueCards: VocabCard[] = []
 
@@ -40,6 +41,7 @@ export default function Vocabulary() {
   const reviewMutation = useReviewCard()
   const createMutation = useCreateVocabCard()
   const generateMutation = useGenerateVocabCards()
+  const learnerSettingsQuery = useLearnerSettings()
 
   const cards = dueQuery.data ?? noDueCards
   const decks = useMemo(() => {
@@ -134,6 +136,17 @@ export default function Vocabulary() {
       {statsQuery.isError && (
         <RetryNotice message={statsQuery.error.message} onRetry={() => void statsQuery.refetch()} />
       )}
+      {learnerSettingsQuery.isLoading && (
+        <p className="text-body-sm text-light-on-surface-variant" role="status">
+          Loading your voice preference…
+        </p>
+      )}
+      {learnerSettingsQuery.isError && (
+        <RetryNotice
+          message={`${learnerSettingsQuery.error.message} Card audio is unavailable.`}
+          onRetry={() => void learnerSettingsQuery.refetch()}
+        />
+      )}
       {dueQuery.isError && (
         <RetryNotice message={dueQuery.error.message} onRetry={() => void dueQuery.refetch()} />
       )}
@@ -174,6 +187,7 @@ export default function Vocabulary() {
             <Flashcard
               card={currentCard}
               cardNumber={cards.findIndex(({ id }) => id === currentCard.id) + 1}
+              accent={learnerSettingsQuery.data?.preferences.accent}
               isRevealed={isRevealed}
               isReviewing={reviewMutation.isPending}
               onRate={review}

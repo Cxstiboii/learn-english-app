@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseAdmin } from '../config/supabase.js'
 import { exercisesSystemPrompt } from '../prompts/exercises.js'
 import { AIServiceError, generateJSON } from './ai/aiClient.js'
+import { buildLearnerContext, renderStudentText } from './learnerContext.js'
 
 const errorPatternSchema = z.object({
   id: z.string().uuid(),
@@ -67,8 +68,6 @@ const generatedQuestionSchema = z.preprocess(
 )
 const storedQuestionSchema = questionWithPatternSchema
 
-const profileLevelSchema = z.enum(['A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'C1', 'C2'])
-
 export class ExerciseServiceError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -103,27 +102,27 @@ export async function getWeakSpots(userId: string) {
   return parsed.data
 }
 
-export async function generateExercises(userId: string, count: number) {
-  const [profileResult, patternsResult] = await Promise.all([
-    supabaseAdmin
-      .from('profiles')
-      .select('current_level')
-      .eq('id', userId)
-      .maybeSingle(),
-    supabaseAdmin
-      .from('error_patterns')
-      .select('id, category, example, correction, count, last_seen_at')
-      .eq('user_id', userId)
+export async function generateExercises(
+  userId: string,
+  count: number,
+  focusCategory?: string,
+) {
+  let patternsQuery = supabaseAdmin
+    .from('error_patterns')
+    .select('id, category, example, correction, count, last_seen_at')
+    .eq('user_id', userId)
+  if (focusCategory) patternsQuery = patternsQuery.eq('category', focusCategory)
+
+  const [learnerContext, patternsResult] = await Promise.all([
+    buildLearnerContext(userId),
+    patternsQuery
       .order('count', { ascending: false })
       .order('last_seen_at', { ascending: false })
-      .limit(5),
+      .limit(focusCategory ? 20 : 5),
   ])
 
-  if (profileResult.error || patternsResult.error) {
+  if (patternsResult.error) {
     throw new ExerciseServiceError(500, 'EXERCISE_CONTEXT_FAILED', 'Unable to load your learning context.')
-  }
-  if (!profileResult.data) {
-    throw new ExerciseServiceError(404, 'PROFILE_NOT_FOUND', 'Your study profile was not found.')
   }
 
   const parsedPatterns = errorPatternsSchema.safeParse(patternsResult.data ?? [])
@@ -132,15 +131,20 @@ export async function generateExercises(userId: string, count: number) {
   }
 
   const patterns = parsedPatterns.data
+  if (focusCategory && !patterns.some(
+    (pattern) => normalizeCategory(pattern.category) === normalizeCategory(focusCategory),
+  )) {
+    throw new ExerciseServiceError(
+      404,
+      'FOCUS_PATTERN_NOT_FOUND',
+      'That error pattern is no longer available for focused practice.',
+    )
+  }
   const hasWeakSpots = patterns.length > 0
-  const parsedLevel = profileLevelSchema.safeParse(profileResult.data.current_level)
-  const level = hasWeakSpots && parsedLevel.success ? parsedLevel.data : 'B1+'
   const weakSpotContext = hasWeakSpots
     ? patterns.map((pattern) => JSON.stringify(pattern)).join('\n')
     : 'No saved error patterns. Focus on common B1+ grammar used in technical English.'
-  const system = `${exercisesSystemPrompt}
-
-Create exactly ${count} questions for an English learner at ${level}. Each question must test one point from the supplied error patterns when they exist. Copy that pattern's category exactly into focusCategory. Keep all distractors plausible and ensure exactly one correct option.`
+  const system = exercisesSystemPrompt(learnerContext, count)
   const questionSetSchema = z.array(generatedQuestionSchema).length(count).superRefine((questions, context) => {
     const prompts = new Set<string>()
     const patternsById = new Map(patterns.map((pattern) => [pattern.id, pattern]))
@@ -181,7 +185,7 @@ Create exactly ${count} questions for an English learner at ${level}. Each quest
     system,
     messages: [{
       role: 'user',
-      content: `Recent error patterns:\n${weakSpotContext}`,
+      content: renderStudentText(`Recent error patterns:\n${weakSpotContext}`),
     }],
     schema: questionSetSchema,
     maxTokens: Math.min(count * 240, 4096),

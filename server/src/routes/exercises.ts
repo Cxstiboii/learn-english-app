@@ -12,6 +12,7 @@ import {
 export const exercisesRouter = Router()
 const generateRequestSchema = z.object({
   count: z.number().int().min(1).max(20),
+  focusCategory: z.string().trim().min(1).max(80).optional(),
 }).strict()
 const answerRequestSchema = z.object({
   selectedOption: z.string().trim().min(1).max(500),
@@ -69,7 +70,11 @@ exercisesRouter.post('/generate', aiRateLimit, async (request, response, next) =
   }
 
   try {
-    const result = await generateExercises(userId, input.data.count)
+    const result = await generateExercises(
+      userId,
+      input.data.count,
+      input.data.focusCategory,
+    )
     response.status(201).json(result)
   } catch (error) {
     handleServiceError(error, response, next)

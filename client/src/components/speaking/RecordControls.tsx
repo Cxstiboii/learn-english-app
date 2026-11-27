@@ -5,6 +5,7 @@ interface RecordControlsProps {
   isSupported: boolean
   hasTranscript: boolean
   isEvaluating: boolean
+  isSettingsReady?: boolean
   onRecordToggle: () => void
   onEvaluate: () => void
 }
@@ -14,6 +15,7 @@ export function RecordControls({
   isSupported,
   hasTranscript,
   isEvaluating,
+  isSettingsReady = true,
   onRecordToggle,
   onEvaluate,
 }: RecordControlsProps) {
@@ -22,7 +24,7 @@ export function RecordControls({
       <Button
         aria-pressed={isListening}
         className="gap-2 border-light-secondary bg-light-secondary text-light-on-secondary hover:opacity-90"
-        disabled={!isSupported && !isListening}
+        disabled={(!isSupported && !isListening) || !isSettingsReady}
         onClick={onRecordToggle}
       >
         <span aria-hidden="true" className="material-symbols-outlined text-body-lg">

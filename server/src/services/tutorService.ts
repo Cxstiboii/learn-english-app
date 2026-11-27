@@ -1,15 +1,17 @@
 import { generateText } from './ai/aiClient.js'
 import { tutorSystemPrompt } from '../prompts/tutor.js'
+import { buildLearnerContext, renderStudentText } from './learnerContext.js'
 
 type TutorInput = {
+  userId: string
   message: string
-  level: 'B1' | 'B2'
 }
 
-export async function getTutorReply({ message, level }: TutorInput): Promise<string> {
+export async function getTutorReply({ userId, message }: TutorInput): Promise<string> {
+  const learnerContext = await buildLearnerContext(userId)
   return generateText({
-    system: tutorSystemPrompt(level),
-    messages: [{ role: 'user', content: message }],
+    system: tutorSystemPrompt(learnerContext),
+    messages: [{ role: 'user', content: renderStudentText(message) }],
     maxTokens: 700,
   })
 }

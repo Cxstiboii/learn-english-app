@@ -36,6 +36,44 @@ describe('API app', () => {
     assert.deepEqual(response.body, { error: 'A valid bearer token is required.' })
   })
 
+  it('requires authentication for settings read and update requests', async () => {
+    const [readResponse, updateResponse] = await Promise.all([
+      request(app).get('/api/preferences'),
+      request(app).put('/api/preferences').send({}),
+    ])
+
+    for (const response of [readResponse, updateResponse]) {
+      assert.equal(response.status, 401)
+      assert.deepEqual(response.body, { error: 'A valid bearer token is required.' })
+    }
+  })
+
+  it('requires authentication for profile suggestion actions', async () => {
+    const responses = await Promise.all([
+      request(app).get('/api/suggestions'),
+      request(app).post('/api/suggestions/00000000-0000-4000-8000-000000000001/accept'),
+      request(app).post('/api/suggestions/00000000-0000-4000-8000-000000000001/dismiss'),
+    ])
+
+    for (const response of responses) {
+      assert.equal(response.status, 401)
+      assert.deepEqual(response.body, { error: 'A valid bearer token is required.' })
+    }
+  })
+
+  it('requires authentication for onboarding and placement endpoints', async () => {
+    const [statusResponse, questionsResponse, completionResponse] = await Promise.all([
+      request(app).get('/api/onboarding/status'),
+      request(app).get('/api/placement/questions'),
+      request(app).post('/api/onboarding/complete').send({}),
+    ])
+
+    for (const response of [statusResponse, questionsResponse, completionResponse]) {
+      assert.equal(response.status, 401)
+      assert.deepEqual(response.body, { error: 'A valid bearer token is required.' })
+    }
+  })
+
   it('does not expose the removed AI ping or legacy tutor chat endpoints', async () => {
     const pingResponse = await request(app).post('/api/ai/ping')
     const tutorChatResponse = await request(app).post('/api/tutor/chat')

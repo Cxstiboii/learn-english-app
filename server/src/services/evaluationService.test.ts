@@ -15,7 +15,7 @@ process.env.AI_PROVIDER = 'google'
 process.env.AI_API_KEY = 'test-google-api-key'
 process.env.AI_MODEL = 'gemini-3.5-flash-lite'
 
-const { saveEvaluationAtomically } = await import('./evaluationService.js')
+const { prepareEvaluationForStorage, saveEvaluationAtomically } = await import('./evaluationService.js')
 
 const savedEvaluationSchema = z.object({
   sessionId: z.string().uuid(),
@@ -30,6 +30,7 @@ function getSaveInput() {
     userId,
     idempotencyKey,
     type: 'speaking' as const,
+    saveTranscripts: true,
     evaluation: { prompt: 'Describe a deployment.' },
     patterns: [],
     resultSchema: savedEvaluationSchema,
@@ -81,5 +82,50 @@ describe('saveEvaluationAtomically', () => {
     expect(rpcMock).toHaveBeenCalledTimes(2)
     expect(rpcMock.mock.calls[0][1].p_idempotency_key)
       .toBe(rpcMock.mock.calls[1][1].p_idempotency_key)
+  })
+
+  it('omits submitted text from stored speaking, writing, and interview results when privacy is off', () => {
+    const privateText = 'private transcript and response text'
+    const speaking = prepareEvaluationForStorage('speaking', {
+      prompt: 'private speaking prompt',
+      transcript: privateText,
+      scores: { fluency: 7, estimatedBand: 6.5 },
+      feedback: {
+        b2UpgradeSuggestion: 'private suggestion',
+        corrections: [{ category: 'grammar', original: 'I goes', corrected: 'I go' }],
+        disclaimer: 'Estimated score, not an official result.',
+      },
+    }, false)
+    const writing = prepareEvaluationForStorage('writing', {
+      exam_mode: 'ielts',
+      prompt: 'private writing prompt',
+      response: privateText,
+      word_count: 70,
+      scores: { estimatedBand: 6 },
+      feedback: {
+        suggestions: ['private writing feedback'],
+        corrections: [],
+        disclaimer: 'Estimated score, not an official result.',
+      },
+    }, false)
+    const interview = prepareEvaluationForStorage('interview', {
+      track: 'behavioral',
+      questions: ['private interview question'],
+      answers: [{ transcript: privateText }],
+      evaluation: {
+        estimatedCEFR: 'B1',
+        summary: 'private interview summary',
+        disclaimer: 'Estimated score, not an official result.',
+      },
+    }, false)
+
+    for (const result of [speaking, writing, interview]) {
+      expect(JSON.stringify(result)).not.toContain('private')
+    }
+    expect(speaking.scores).toEqual({ fluency: 7, estimatedBand: 6.5 })
+    expect(writing.response).toBe('')
+    expect(writing.prompt).toBe('')
+    expect(interview.questions).toEqual([])
+    expect(interview.answers).toEqual([])
   })
 })

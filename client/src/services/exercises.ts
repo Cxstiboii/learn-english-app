@@ -21,10 +21,10 @@ export async function getWeakSpots(): Promise<WeakSpot[]> {
   return result.weakSpots
 }
 
-export async function generateExercises(count: number) {
+export async function generateExercises(input: { count: number; focusCategory?: string }) {
   return apiFetch<{ exercises: ExerciseQuestion[] }>('/api/exercises/generate', {
     method: 'POST',
-    body: JSON.stringify({ count }),
+    body: JSON.stringify(input),
   })
 }
 

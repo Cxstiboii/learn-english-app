@@ -6,7 +6,9 @@ import { TodayPanel } from '../components/path/TodayPanel'
 import { UnitCard } from '../components/path/UnitCard'
 import { Button, Card } from '../components/ui'
 import { useCompletePathActivity, useStudyPath } from '../hooks/useStudyPath'
+import { useLearnerSettings } from '../hooks/useLearnerSettings'
 import { pathActivityRoutes } from '../services/path'
+import { getPreferredActivityId, getRecommendedUnitIds } from '../services/pathPersonalization'
 import type { Activity, PathFilter, Unit } from '../types/path'
 
 const noUnits: Unit[] = []
@@ -14,6 +16,7 @@ const noUnits: Unit[] = []
 export default function StudyPath() {
   const navigate = useNavigate()
   const pathQuery = useStudyPath()
+  const learnerSettingsQuery = useLearnerSettings()
   const completeMutation = useCompletePathActivity()
   const failedActivityId = completeMutation.variables
   const units = pathQuery.data ?? noUnits
@@ -27,9 +30,15 @@ export default function StudyPath() {
   const expandedUnitId = expandedUnitSelection === undefined
     ? defaultExpandedUnit?.id ?? ''
     : expandedUnitSelection
+  const recommendedActivityId = learnerSettingsQuery.data
+    ? getPreferredActivityId(units, learnerSettingsQuery.data.preferences.focusSkills)
+    : null
   const defaultActivity = units
     .flatMap(({ activities }) => activities)
-    .find(({ status }) => status === 'active' || status === 'available' || status === 'completed')
+    .find(({ id }) => id === recommendedActivityId)
+    ?? units
+      .flatMap(({ activities }) => activities)
+      .find(({ status }) => status === 'active' || status === 'available' || status === 'completed')
   const selectedActivityId = activitySelection === undefined
     ? defaultActivity?.id ?? null
     : activitySelection
@@ -41,6 +50,9 @@ export default function StudyPath() {
     .flatMap((unit) => unit.activities.map((activity) => ({ activity, unit })))
     .find(({ activity }) => activity.id === selectedActivityId)
   const totalActivities = units.reduce((total, unit) => total + unit.activities.length, 0)
+  const recommendedUnitIds = learnerSettingsQuery.data
+    ? getRecommendedUnitIds(units, learnerSettingsQuery.data)
+    : new Set<string>()
   const completedCount = units.reduce(
     (total, unit) => total + unit.activities.filter(({ status }) => status === 'completed').length,
     0,
@@ -109,6 +121,17 @@ export default function StudyPath() {
       ) : (
         <>
           <PathHeader completedCount={completedCount} totalActivities={totalActivities} />
+          {learnerSettingsQuery.isLoading && (
+            <p className="text-body-sm text-light-on-surface-variant" role="status">
+              Loading your personalized study plan…
+            </p>
+          )}
+          {learnerSettingsQuery.isError && (
+            <div className="flex flex-wrap items-center justify-between gap-gutter-sm rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm text-light-on-error-container" role="alert">
+              <span>{learnerSettingsQuery.error.message} Personal recommendations are unavailable.</span>
+              <Button onClick={() => void learnerSettingsQuery.refetch()} size="sm" variant="secondary">Retry</Button>
+            </div>
+          )}
           {completeMutation.isError && failedActivityId && (
             <div className="flex flex-wrap items-center justify-between gap-gutter-sm rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm text-light-on-error-container" role="alert">
               <span>{completeMutation.error.message}</span>
@@ -133,6 +156,7 @@ export default function StudyPath() {
               >
                 {visibleUnits.length > 0 ? visibleUnits.map((unit) => (
                   <UnitCard
+                    isRecommended={recommendedUnitIds.has(unit.id)}
                     isExpanded={expandedUnitId === unit.id}
                     key={unit.id}
                     onSelectActivity={handleSelectActivity}
@@ -152,6 +176,9 @@ export default function StudyPath() {
               {selectedActivityEntry && (
                 <TodayPanel
                   activity={selectedActivityEntry.activity}
+                  accent={learnerSettingsQuery.data?.preferences.accent}
+                  dailyGoalMinutes={learnerSettingsQuery.data?.dailyGoalMinutes}
+                  focusSkills={learnerSettingsQuery.data?.preferences.focusSkills}
                   isCompleting={completeMutation.isPending}
                   onComplete={() => completeMutation.mutate(selectedActivityEntry.activity.id)}
                   onPractice={handlePractice}

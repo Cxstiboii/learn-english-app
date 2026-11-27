@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ExerciseSummary } from '../components/exercises/ExerciseSummary'
 import { QuestionCard } from '../components/exercises/QuestionCard'
 import { WeakSpotsQueue } from '../components/exercises/WeakSpotsQueue'
@@ -29,6 +30,11 @@ function toQuestion(question: ExerciseQuestion): Question {
 }
 
 export default function Exercises() {
+  const [searchParams] = useSearchParams()
+  const requestedFocusCategory = searchParams.get('focusCategory')?.trim()
+  const focusCategory = requestedFocusCategory && requestedFocusCategory.length <= 80
+    ? requestedFocusCategory
+    : undefined
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState<string | null>(null)
@@ -45,7 +51,10 @@ export default function Exercises() {
   const currentQuestion = questions[currentQuestionIndex]
 
   function generateSet() {
-    generateMutation.mutate(5, {
+    generateMutation.mutate({
+      count: 5,
+      ...(focusCategory ? { focusCategory } : {}),
+    }, {
       onSuccess: ({ exercises }) => {
         setQuestions(exercises.map(toQuestion))
         setCurrentQuestionIndex(0)
@@ -112,7 +121,9 @@ export default function Exercises() {
             Targeted Exercises
           </h1>
           <p className="font-body text-body-md text-light-on-surface-variant">
-            Generated from your recent Tutor Chat and evaluation mistakes.
+            {focusCategory
+              ? `Focused practice for your recurring ${focusCategory} errors.`
+              : 'Generated from your recent Tutor Chat and evaluation mistakes.'}
           </p>
         </div>
         {questions.length > 0 && !isFinished && (
@@ -164,13 +175,13 @@ export default function Exercises() {
           ) : (
             <Card className="flex min-h-80 flex-col items-center justify-center gap-gutter-md text-center" padding="lg">
               <h2 className="font-headline text-headline-md text-light-on-surface">
-                Ready for a focused practice set?
+                {focusCategory ? `Ready to practice ${focusCategory}?` : 'Ready for a focused practice set?'}
               </h2>
               <p className="max-w-md font-body text-body-md text-light-on-surface-variant">
                 We’ll create five questions from your most frequent errors, or common B1+ technical grammar if you have none yet.
               </p>
               <Button disabled={weakSpotsQuery.isLoading} onClick={generateSet}>
-                Generate 5 exercises
+                {focusCategory ? `Generate 5 ${focusCategory} exercises` : 'Generate 5 exercises'}
               </Button>
             </Card>
           )}

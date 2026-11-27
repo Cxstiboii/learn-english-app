@@ -32,9 +32,10 @@ function renderLinkClass({ isActive }: NavLinkRenderProps, mobile = false) {
 
 export default function Navbar() {
   const navigate = useNavigate()
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
   const progressSummary = useProgressSummary()
   const [signOutError, setSignOutError] = useState('')
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
 
   async function handleSignOut() {
     setSignOutError('')
@@ -107,13 +108,41 @@ export default function Navbar() {
           <span className="inline-flex items-center rounded-sm border border-light-outline-variant bg-light-surface-container-high px-2.5 py-1 font-mono text-label-sm text-light-on-surface">
             B1 → B2
           </span>
-          <button
-            className="rounded-md px-3 py-1.5 font-label text-label-md text-light-on-surface-variant transition-colors hover:bg-light-surface-container-low hover:text-light-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-light-primary"
-            onClick={handleSignOut}
-            type="button"
-          >
-            Sign out
-          </button>
+          <div className="relative">
+            <button
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="menu"
+              className="max-w-36 truncate rounded-md px-3 py-1.5 font-label text-label-md text-light-on-surface-variant transition-colors hover:bg-light-surface-container-low hover:text-light-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-light-primary sm:max-w-48"
+              onClick={() => setIsUserMenuOpen((isOpen) => !isOpen)}
+              type="button"
+            >
+              {user?.email ?? 'Account'}
+            </button>
+            {isUserMenuOpen && (
+              <div
+                aria-label="User menu"
+                className="absolute right-0 top-full z-30 mt-2 flex min-w-48 flex-col rounded-default border border-light-outline-variant bg-light-surface-container-lowest p-1 shadow-lg"
+                role="menu"
+              >
+                <Link
+                  className="rounded-sm px-3 py-2 font-label text-label-md text-light-on-surface hover:bg-light-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-light-primary"
+                  onClick={() => setIsUserMenuOpen(false)}
+                  role="menuitem"
+                  to="/settings"
+                >
+                  Settings
+                </Link>
+                <button
+                  className="rounded-sm px-3 py-2 text-left font-label text-label-md text-light-on-surface hover:bg-light-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-light-primary"
+                  onClick={() => void handleSignOut()}
+                  role="menuitem"
+                  type="button"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

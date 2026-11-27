@@ -7,6 +7,7 @@ import {
   saveEvaluationAtomically,
   scoreSchema,
 } from './evaluationService.js'
+import { buildLearnerContext, renderStudentData } from './learnerContext.js'
 
 const writingEvaluationSchema = z.object({
   scores: z.object({
@@ -25,7 +26,7 @@ const savedWritingEvaluationSchema = z.object({
   submissionId: z.string().uuid(),
   scores: writingEvaluationSchema.shape.scores,
   estimatedBand: scoreSchema,
-  suggestions: writingEvaluationSchema.shape.suggestions,
+  suggestions: z.array(z.string().trim().min(1).max(1000)).max(3),
   corrections: writingEvaluationSchema.shape.corrections,
   disclaimer: z.literal(evaluationDisclaimer),
   wordCount: z.number().int().nonnegative(),
@@ -46,11 +47,15 @@ export async function evaluateWriting(
   idempotencyKey: string,
   input: WritingEvaluationInput,
 ) {
+  const learnerContext = await buildLearnerContext(userId)
+  const examMode = learnerContext.examTarget === 'none'
+    ? input.examMode
+    : learnerContext.examTarget
   const evaluation = await generateJSON({
-    system: writingSystemPrompt,
+    system: writingSystemPrompt(learnerContext, examMode),
     messages: [{
       role: 'user',
-      content: JSON.stringify(input),
+      content: renderStudentData({ ...input, examMode }),
     }],
     schema: writingEvaluationSchema,
     maxTokens: 2200,
@@ -61,8 +66,9 @@ export async function evaluateWriting(
     userId,
     idempotencyKey,
     type: 'writing',
+    saveTranscripts: learnerContext.saveTranscripts,
     evaluation: {
-      exam_mode: input.examMode,
+      exam_mode: examMode,
       prompt: input.prompt,
       response: input.response,
       word_count: wordCount,

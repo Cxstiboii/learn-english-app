@@ -98,7 +98,7 @@ The study path endpoints are `GET /api/path` and `POST /api/path/activities/:id/
 
 ## Supabase database
 
-In the Supabase Dashboard, open **SQL Editor** for your project and run `supabase/migrations/001_init.sql` through `supabase/migrations/007_atomic_evaluation_persistence.sql` in order. If migrations `001`–`006` are already applied, run only `007_atomic_evaluation_persistence.sql`; do not rerun the previous migrations. Finally, run `supabase/seed.sql` to load the five study-path units and their activities. The seed can be run again safely to update the study-path content.
+In the Supabase Dashboard, open **SQL Editor** for your project and run `supabase/migrations/001_init.sql` through `supabase/migrations/012_profile_suggestions.sql` in order. If migrations `001`–`007` are already applied, run only `008_learning_personalization.sql` through `012_profile_suggestions.sql`; do not rerun the previous migrations. Run `supabase/seed.sql` to load the study-path units and activities, and `supabase/seed_placement.sql` to load placement-test questions. Both seed scripts are safe to run again.
 
 ## Checks
 

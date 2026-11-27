@@ -8,6 +8,7 @@ import {
   saveEvaluationAtomically,
   scoreSchema,
 } from './evaluationService.js'
+import { buildLearnerContext, renderStudentData } from './learnerContext.js'
 
 const speakingEvaluationSchema = z.object({
   fluency: scoreSchema,
@@ -20,8 +21,11 @@ const speakingEvaluationSchema = z.object({
   disclaimer: z.literal(evaluationDisclaimer),
 }).strict()
 
-const savedSpeakingEvaluationSchema = speakingEvaluationSchema.extend({
+const savedSpeakingEvaluationSchema = speakingEvaluationSchema
+  .omit({ b2UpgradeSuggestion: true })
+  .extend({
   sessionId: z.string().uuid(),
+  b2UpgradeSuggestion: z.string().optional(),
 })
 
 export type SpeakingEvaluationInput = {
@@ -35,11 +39,12 @@ export async function evaluateSpeaking(
   idempotencyKey: string,
   input: SpeakingEvaluationInput,
 ) {
+  const learnerContext = await buildLearnerContext(userId)
   const evaluation = await generateJSON({
-    system: speakingSystemPrompt,
+    system: speakingSystemPrompt(learnerContext),
     messages: [{
       role: 'user',
-      content: JSON.stringify(input),
+      content: renderStudentData(input),
     }],
     schema: speakingEvaluationSchema,
     maxTokens: 1400,
@@ -49,6 +54,7 @@ export async function evaluateSpeaking(
     userId,
     idempotencyKey,
     type: 'speaking',
+    saveTranscripts: learnerContext.saveTranscripts,
     evaluation: {
       prompt: input.prompt,
       transcript: input.transcript,

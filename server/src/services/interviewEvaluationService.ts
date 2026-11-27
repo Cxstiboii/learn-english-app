@@ -7,6 +7,7 @@ import {
   languageErrorSchema,
   saveEvaluationAtomically,
 } from './evaluationService.js'
+import { buildLearnerContext, renderStudentData } from './learnerContext.js'
 
 const interviewAnswerEvaluationSchema = z.object({
   index: z.number().int().min(0).max(9),
@@ -61,6 +62,7 @@ export async function evaluateInterview(
   idempotencyKey: string,
   input: InterviewEvaluationInput,
 ) {
+  const learnerContext = await buildLearnerContext(userId)
   const evaluationSchema = interviewEvaluationFieldsSchema.extend({
     answers: z.array(interviewAnswerEvaluationSchema).length(input.answers.length),
   }).strict().superRefine((evaluation, context) => {
@@ -76,10 +78,10 @@ export async function evaluateInterview(
   })
 
   const evaluation = await generateJSON({
-    system: interviewSystemPrompt,
+    system: interviewSystemPrompt(learnerContext),
     messages: [{
       role: 'user',
-      content: JSON.stringify(input),
+      content: renderStudentData(input),
     }],
     schema: evaluationSchema,
     maxTokens: Math.min(input.answers.length * 800 + 900, 4096),
@@ -108,6 +110,7 @@ export async function evaluateInterview(
     userId,
     idempotencyKey,
     type: 'interview',
+    saveTranscripts: learnerContext.saveTranscripts,
     evaluation: {
       track: input.track,
       questions: input.answers.map(({ question }) => question),

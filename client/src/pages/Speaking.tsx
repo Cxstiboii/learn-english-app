@@ -8,8 +8,11 @@ import { speakingPrompt } from '../content/speakingPrompt'
 import { useEvaluateSpeaking } from '../hooks/useSpeaking'
 import { Button } from '../components/ui'
 import { createIdempotencyKey } from '../lib/idempotency'
+import { useLearnerSettings } from '../hooks/useLearnerSettings'
 
 export default function Speaking() {
+  const settingsQuery = useLearnerSettings()
+  const language = settingsQuery.data?.preferences.accent === 'uk' ? 'en-GB' : 'en-US'
   const {
     transcript,
     isListening,
@@ -18,7 +21,7 @@ export default function Speaking() {
     reset,
     isSupported,
     error: recognitionError,
-  } = useSpeechRecognition()
+  } = useSpeechRecognition(undefined, language)
   const { elapsedSeconds, reset: resetCountdown } = useCountdown(
     speakingPrompt.durationSeconds,
     isListening,
@@ -90,6 +93,17 @@ export default function Speaking() {
               Speech recognition is not supported in this browser. Use Chrome or Edge to record your answer.
             </p>
           )}
+          {settingsQuery.isLoading && (
+            <p className="text-body-sm text-light-on-surface-variant" role="status">
+              Loading your preferred English accent…
+            </p>
+          )}
+          {settingsQuery.isError && (
+            <div className="flex flex-wrap items-center justify-between gap-gutter-sm rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm text-light-on-error-container" role="alert">
+              <span>{settingsQuery.error.message}</span>
+              <Button onClick={() => void settingsQuery.refetch()} size="sm" variant="secondary">Retry</Button>
+            </div>
+          )}
           {recognitionError && (
             <p
               className="rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm font-body text-body-sm text-light-on-error-container"
@@ -112,6 +126,7 @@ export default function Speaking() {
             hasTranscript={Boolean(transcript.trim())}
             isEvaluating={isEvaluating}
             isListening={isListening}
+            isSettingsReady={settingsQuery.isSuccess}
             isSupported={isSupported}
             onEvaluate={handleEvaluate}
             onRecordToggle={toggleRecording}

@@ -66,7 +66,10 @@ function getRecognitionErrorMessage(error: string) {
   }
 }
 
-export function useSpeechRecognition(onTranscript?: (transcript: string) => void) {
+export function useSpeechRecognition(
+  onTranscript?: (transcript: string) => void,
+  language: 'en-US' | 'en-GB' = 'en-US',
+) {
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const finalTranscriptRef = useRef('')
   const interimTranscriptRef = useRef('')
@@ -112,7 +115,7 @@ export function useSpeechRecognition(onTranscript?: (transcript: string) => void
     const recognition = new Recognition()
     recognition.continuous = true
     recognition.interimResults = true
-    recognition.lang = 'en-US'
+    recognition.lang = language
     recognitionRef.current = recognition
 
     setFinalTranscript('')
@@ -190,7 +193,7 @@ export function useSpeechRecognition(onTranscript?: (transcript: string) => void
           : 'Unable to start speech recognition. Please check microphone permissions and try again.',
       )
     }
-  }, [onTranscript])
+  }, [language, onTranscript])
 
   useEffect(
     () => () => {

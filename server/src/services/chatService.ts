@@ -5,6 +5,7 @@ import {
   generateJSON,
   type AIMessage,
 } from './ai/aiClient.js'
+import { buildLearnerContext, renderStudentText } from './learnerContext.js'
 import { tutorChatSystemPrompt } from '../prompts/tutor.js'
 
 const correctionSchema = z.object({
@@ -44,8 +45,6 @@ const tutorResponseSchema = z.object({
   newVocabulary: z.array(vocabularySchema).max(8),
 }).strict()
 
-const profileLevelSchema = z.enum(['A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'C1', 'C2'])
-
 export class ChatServiceError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -61,26 +60,22 @@ type ChatResult = z.infer<typeof tutorResponseSchema> & {
   conversationId: string
 }
 
+export function getChatTextForStorage(
+  message: string,
+  reply: string,
+  saveTranscripts: boolean,
+) {
+  return saveTranscripts
+    ? { userMessage: message, assistantReply: reply }
+    : { userMessage: '', assistantReply: '' }
+}
+
 export async function chatWithTutor(
   userId: string,
   message: string,
   requestedConversationId?: string,
 ): Promise<ChatResult> {
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('current_level')
-    .eq('id', userId)
-    .maybeSingle()
-
-  if (profileError) {
-    throw new ChatServiceError(500, 'PROFILE_LOOKUP_FAILED', 'Unable to load your study profile.')
-  }
-  if (!profile) {
-    throw new ChatServiceError(404, 'PROFILE_NOT_FOUND', 'Your study profile was not found.')
-  }
-
-  const parsedLevel = profileLevelSchema.safeParse(profile.current_level)
-  const level = parsedLevel.success ? parsedLevel.data : 'B1'
+  const learnerContext = await buildLearnerContext(userId)
   let conversationId = requestedConversationId
   let history: AIMessage[] = []
 
@@ -99,27 +94,29 @@ export async function chatWithTutor(
       throw new ChatServiceError(404, 'CONVERSATION_NOT_FOUND', 'Conversation not found.')
     }
 
-    const { data: recentMessages, error: messagesError } = await supabaseAdmin
-      .from('messages')
-      .select('role, content')
-      .eq('conversation_id', conversationId)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(10)
+    if (learnerContext.saveTranscripts) {
+      const { data: recentMessages, error: messagesError } = await supabaseAdmin
+        .from('messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
 
-    if (messagesError) {
-      throw new ChatServiceError(500, 'MESSAGE_HISTORY_FAILED', 'Unable to load conversation history.')
+      if (messagesError) {
+        throw new ChatServiceError(500, 'MESSAGE_HISTORY_FAILED', 'Unable to load conversation history.')
+      }
+
+      history = (recentMessages ?? []).reverse().map(({ role, content }) => ({
+        role: role === 'assistant' ? 'assistant' : 'user',
+        content: renderStudentText(content),
+      }))
     }
-
-    history = (recentMessages ?? []).reverse().map(({ role, content }) => ({
-      role: role === 'assistant' ? 'assistant' : 'user',
-      content,
-    }))
   }
 
   const generated = await generateJSON({
-    system: tutorChatSystemPrompt(level),
-    messages: [...history, { role: 'user', content: message }],
+    system: tutorChatSystemPrompt(learnerContext),
+    messages: [...history, { role: 'user', content: renderStudentText(message) }],
     schema: tutorResponseSchema,
     maxTokens: 1100,
   })
@@ -127,7 +124,10 @@ export async function chatWithTutor(
   if (!conversationId) {
     const { data: conversation, error: createError } = await supabaseAdmin
       .from('conversations')
-      .insert({ user_id: userId, title: message.slice(0, 80) })
+      .insert({
+        user_id: userId,
+        title: learnerContext.saveTranscripts ? message.slice(0, 80) : 'Practice session',
+      })
       .select('id')
       .single()
 
@@ -145,13 +145,20 @@ export async function chatWithTutor(
     )
   }
 
+  const storedText = getChatTextForStorage(
+    message,
+    generated.reply,
+    learnerContext.saveTranscripts,
+  )
+
   const { error: saveError } = await supabaseAdmin.rpc('save_chat_exchange', {
     p_user_id: userId,
     p_conversation_id: conversationId,
-    p_user_message: message,
-    p_assistant_reply: generated.reply,
+    p_user_message: storedText.userMessage,
+    p_assistant_reply: storedText.assistantReply,
     p_corrections: generated.corrections,
     p_minutes: 1,
+    p_save_transcripts: learnerContext.saveTranscripts,
   })
 
   if (saveError) {

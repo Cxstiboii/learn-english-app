@@ -3,8 +3,7 @@ import { supabaseAdmin } from '../config/supabase.js'
 import { vocabSystemPrompt } from '../prompts/vocab.js'
 import { AIServiceError, generateJSON } from './ai/aiClient.js'
 import { calculateSM2, type ReviewRating } from './srs.js'
-
-const profileLevelSchema = z.enum(['A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'C1', 'C2'])
+import { buildLearnerContext, renderStudentData } from './learnerContext.js'
 
 const generatedCardSchema = z.object({
   term: z.string().trim().min(1).max(120),
@@ -115,12 +114,8 @@ export async function generateVocabCards(
   topic: string | undefined,
   count: number,
 ) {
-  const [profileResult, patternsResult] = await Promise.all([
-    supabaseAdmin
-      .from('profiles')
-      .select('current_level')
-      .eq('id', userId)
-      .maybeSingle(),
+  const [learnerContext, patternsResult] = await Promise.all([
+    buildLearnerContext(userId),
     supabaseAdmin
       .from('error_patterns')
       .select('category, example, correction, count')
@@ -129,15 +124,10 @@ export async function generateVocabCards(
       .limit(10),
   ])
 
-  if (profileResult.error || patternsResult.error) {
+  if (patternsResult.error) {
     throw new VocabServiceError(500, 'VOCAB_CONTEXT_FAILED', 'Unable to load your learning context.')
   }
-  if (!profileResult.data) {
-    throw new VocabServiceError(404, 'PROFILE_NOT_FOUND', 'Your study profile was not found.')
-  }
 
-  const parsedLevel = profileLevelSchema.safeParse(profileResult.data.current_level)
-  const level = parsedLevel.success ? parsedLevel.data : 'B1'
   const recentErrors = patternsResult.data ?? []
   const errorContext = recentErrors.length
     ? recentErrors
@@ -146,9 +136,7 @@ export async function generateVocabCards(
         )
         .join('\n')
     : 'No recent error patterns are available.'
-  const system = `${vocabSystemPrompt}
-
-The learner's current English level is ${level}. Create exactly ${count} distinct vocabulary cards. Return only a JSON array with objects containing term, definition, and example. Definitions should be concise and in Spanish; examples should be natural English sentences in software engineering contexts. Avoid repeating a term within the generated set.`
+  const system = vocabSystemPrompt(learnerContext, count)
   const schema = z.array(generatedCardSchema).length(count).superRefine((cards, context) => {
     const terms = new Set<string>()
     cards.forEach((card, index) => {
@@ -167,7 +155,10 @@ The learner's current English level is ${level}. Create exactly ${count} distinc
     system,
     messages: [{
       role: 'user',
-      content: `Topic: ${topic ?? 'use the learner errors to choose useful engineering vocabulary'}\nRecent error patterns:\n${errorContext}`,
+      content: renderStudentData({
+        topic: topic ?? 'use learner errors and interests to choose useful technical vocabulary',
+        recentErrors: errorContext,
+      }),
     }],
     schema,
     maxTokens: Math.min(count * 180, 3600),

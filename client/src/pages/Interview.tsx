@@ -9,6 +9,7 @@ import { useCountdown, formatDuration } from '../hooks/useCountdown'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { interviewQuestions, interviewTrackLabels } from '../content/interviewQuestions'
 import { useEvaluateInterview } from '../hooks/useInterview'
+import { Button } from '../components/ui'
 import { createIdempotencyKey } from '../lib/idempotency'
 import type {
   InterviewAnswer,
@@ -17,6 +18,7 @@ import type {
   StarAssessment,
   StarItemStatus,
 } from '../types/interview'
+import { useLearnerSettings } from '../hooks/useLearnerSettings'
 
 const QUESTION_SECONDS = 2 * 60
 
@@ -67,6 +69,8 @@ function assessStarAnswer(answer: string, isFinalized: boolean): StarAssessment 
 
 export default function Interview() {
   const navigate = useNavigate()
+  const settingsQuery = useLearnerSettings()
+  const voiceLocale = settingsQuery.data?.preferences.accent === 'uk' ? 'en-GB' : 'en-US'
   const [activeTrack, setActiveTrack] = useState<InterviewTrack>('behavioral')
   const [progress, setProgress] = useState<InterviewProgress>(initialProgress)
   const [isPaused, setIsPaused] = useState(false)
@@ -100,7 +104,7 @@ export default function Interview() {
     stop: stopRecognition,
     isSupported,
     error: recognitionError,
-  } = useSpeechRecognition(saveRecognizedTranscript)
+  } = useSpeechRecognition(saveRecognizedTranscript, voiceLocale)
   const activeProgress = progress[activeTrack]
   const evaluatingTrack = evaluationMutation.isPending
     ? evaluationMutation.variables?.track ?? null
@@ -260,11 +264,11 @@ export default function Interview() {
     try {
       window.speechSynthesis.cancel()
       const utterance = new SpeechSynthesisUtterance(question.prompt)
-      utterance.lang = 'en-US'
+      utterance.lang = voiceLocale
       utterance.voice =
         window.speechSynthesis
           .getVoices()
-          .find((voice) => voice.lang.toLowerCase().startsWith('en-us')) ?? null
+          .find((voice) => voice.lang.toLowerCase().startsWith(voiceLocale.toLowerCase())) ?? null
       utterance.onerror = () => setListenError('Unable to play the question audio.')
       setListenError(null)
       window.speechSynthesis.speak(utterance)
@@ -375,6 +379,22 @@ export default function Interview() {
               aria-label="Interview question and response"
               className="flex flex-col gap-gutter-md lg:col-span-7"
             >
+              {settingsQuery.isLoading && (
+                <p className="text-body-sm text-light-on-surface-variant" role="status">
+                  Loading your preferred English accent…
+                </p>
+              )}
+              {settingsQuery.isError && (
+                <div
+                  className="rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm font-body text-body-sm text-light-on-error-container"
+                  role="alert"
+                >
+                  {settingsQuery.error.message}
+                  <Button onClick={() => void settingsQuery.refetch()} size="sm" variant="secondary">
+                    Retry
+                  </Button>
+                </div>
+              )}
               {isPaused && (
                 <p
                   className="rounded-default border border-warning bg-warning-container px-gutter-md py-gutter-sm font-body text-body-sm text-on-warning-container"
@@ -389,6 +409,7 @@ export default function Interview() {
                   isLastQuestion={activeProgress.step === roundQuestions.length - 1}
                   isListening={isListening}
                   isSupported={isSupported}
+                  isVoiceReady={settingsQuery.isSuccess}
                   isTimerExpired={isExpired}
                   listenError={listenError}
                   onAnswerChange={updateAnswer}

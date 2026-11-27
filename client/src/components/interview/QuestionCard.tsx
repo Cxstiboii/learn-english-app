@@ -9,6 +9,7 @@ interface QuestionCardProps {
   recognitionError: string | null
   listenError: string | null
   isLastQuestion: boolean
+  isVoiceReady?: boolean
   onAnswerChange: (answer: string) => void
   onListen: () => void
   onSpeakToggle: () => void
@@ -24,6 +25,7 @@ export function QuestionCard({
   recognitionError,
   listenError,
   isLastQuestion,
+  isVoiceReady = true,
   onAnswerChange,
   onListen,
   onSpeakToggle,
@@ -43,6 +45,7 @@ export function QuestionCard({
         <Button
           aria-label="Listen to the interviewer question"
           className="gap-1.5 px-2.5 py-1.5 font-mono text-label-sm"
+          disabled={!isVoiceReady}
           onClick={onListen}
           size="sm"
           variant="secondary"

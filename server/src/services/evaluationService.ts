@@ -31,11 +31,71 @@ export const cefrSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
 
 export type EvaluationType = 'speaking' | 'writing' | 'interview'
 
+function getRecord(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  const record: Record<string, unknown> = {}
+  for (const [key, entry] of Object.entries(value)) record[key] = entry
+  return record
+}
+
+export function prepareEvaluationForStorage(
+  type: EvaluationType,
+  evaluation: Record<string, unknown>,
+  saveTranscripts: boolean,
+): Record<string, unknown> {
+  if (saveTranscripts) return evaluation
+
+  if (type === 'speaking') {
+    const feedback = getRecord(evaluation.feedback)
+    return {
+      prompt: '',
+      transcript: null,
+      scores: evaluation.scores,
+      feedback: {
+        corrections: feedback.corrections,
+        disclaimer: feedback.disclaimer,
+      },
+    }
+  }
+
+  if (type === 'writing') {
+    const feedback = getRecord(evaluation.feedback)
+    return {
+      exam_mode: evaluation.exam_mode,
+      prompt: '',
+      response: '',
+      word_count: 0,
+      scores: evaluation.scores,
+      feedback: {
+        suggestions: [],
+        corrections: feedback.corrections,
+        disclaimer: feedback.disclaimer,
+      },
+    }
+  }
+
+  const interviewEvaluation = getRecord(evaluation.evaluation)
+  return {
+    track: evaluation.track,
+    questions: [],
+    answers: [],
+    evaluation: {
+      answers: [],
+      summary: '',
+      estimatedCEFR: interviewEvaluation.estimatedCEFR,
+      strengths: [],
+      suggestions: [],
+      disclaimer: interviewEvaluation.disclaimer,
+    },
+  }
+}
+
 export async function saveEvaluationAtomically<T>({
   userId,
   idempotencyKey,
   type,
   evaluation,
+  saveTranscripts,
   patterns,
   resultSchema,
   errorCode,
@@ -45,6 +105,7 @@ export async function saveEvaluationAtomically<T>({
   idempotencyKey: string
   type: EvaluationType
   evaluation: Record<string, unknown>
+  saveTranscripts: boolean
   patterns: Array<z.infer<typeof languageErrorSchema>>
   resultSchema: z.ZodType<T>
   errorCode: string
@@ -54,7 +115,7 @@ export async function saveEvaluationAtomically<T>({
     p_user_id: userId,
     p_idempotency_key: idempotencyKey,
     p_evaluation_type: type,
-    p_evaluation: evaluation,
+    p_evaluation: prepareEvaluationForStorage(type, evaluation, saveTranscripts),
     p_patterns: patterns.map(({ category, original, corrected }) => ({
       category,
       example: original,

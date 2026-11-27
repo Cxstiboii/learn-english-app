@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Activity, Unit } from '../../types/path'
+import type { Accent, FocusSkill } from '../../types/onboarding'
 import { Badge, Button, Card } from '../ui'
 
 interface TodayPanelProps {
@@ -8,6 +9,9 @@ interface TodayPanelProps {
   onPractice: (activity: Activity) => void
   onComplete: () => void
   isCompleting?: boolean
+  accent?: Accent
+  dailyGoalMinutes?: number
+  focusSkills?: FocusSkill[]
 }
 
 const activityTypeLabels = {
@@ -16,7 +20,23 @@ const activityTypeLabels = {
   'Slack-Escritura': 'Slack / Escritura',
 } as const
 
-export function TodayPanel({ activity, unit, onPractice, onComplete, isCompleting = false }: TodayPanelProps) {
+const focusSkillLabels: Record<FocusSkill, string> = {
+  speaking: 'Speaking',
+  listening: 'Listening',
+  writing: 'Writing',
+  vocab_grammar: 'Vocabulary & grammar',
+}
+
+export function TodayPanel({
+  activity,
+  unit,
+  onPractice,
+  onComplete,
+  isCompleting = false,
+  accent,
+  dailyGoalMinutes,
+  focusSkills = [],
+}: TodayPanelProps) {
   const [audioNotice, setAudioNotice] = useState({ activityId: '', message: '' })
   const audioStatus = audioNotice.activityId === activity.id ? audioNotice.message : ''
   const isCompleted = activity.status === 'completed'
@@ -43,10 +63,11 @@ export function TodayPanel({ activity, unit, onPractice, onComplete, isCompletin
 
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(activity.phrase)
-    utterance.lang = 'en-US'
+    const locale = accent === 'uk' ? 'en-GB' : 'en-US'
+    utterance.lang = locale
     const voice = window.speechSynthesis
       .getVoices()
-      .find((availableVoice) => availableVoice.lang.toLowerCase() === 'en-us')
+      .find((availableVoice) => availableVoice.lang.toLowerCase().startsWith(locale.toLowerCase()))
     if (voice) utterance.voice = voice
 
     utterance.onstart = () => showAudioStatus('Reproduciendo pronunciación en inglés…')
@@ -89,6 +110,19 @@ export function TodayPanel({ activity, unit, onPractice, onComplete, isCompletin
         </p>
       </header>
 
+      {dailyGoalMinutes !== undefined && (
+        <section aria-label="Today's study plan" className="flex flex-col gap-1 rounded-default border border-light-outline-variant bg-light-surface-container-low p-gutter-sm">
+          <p className="font-label text-label-md text-light-on-surface">
+            Daily target: {dailyGoalMinutes} minutes
+          </p>
+          {focusSkills.length > 0 && (
+            <p className="font-body text-body-sm text-light-on-surface-variant">
+              Priority: {focusSkills.map((skill) => focusSkillLabels[skill]).join(' → ')}
+            </p>
+          )}
+        </section>
+      )}
+
       <div className="flex flex-col gap-gutter-md">
         <section className="flex flex-col gap-gutter-sm rounded-default border border-light-outline-variant bg-light-surface-container-low p-gutter-md">
           <div className="flex items-center justify-between gap-gutter-sm">
@@ -98,6 +132,7 @@ export function TodayPanel({ activity, unit, onPractice, onComplete, isCompletin
             <Button
               aria-label="Escuchar pronunciación de la frase modelo"
               className="size-8 shrink-0 rounded-md border border-light-outline-variant bg-light-surface-container-lowest p-1.5 text-light-on-surface hover:bg-light-surface-container-high"
+              disabled={!accent}
               onClick={playPhrase}
               size="icon"
               variant="secondary"

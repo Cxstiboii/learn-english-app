@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Button } from '../components/ui'
 import { ErrorPatternsTable } from '../components/progress/ErrorPatternsTable'
+import { SuggestionsForYouCard } from '../components/profileSuggestions/SuggestionsForYouCard'
 import { StatCard } from '../components/progress/StatCard'
 import { useLogActivity, useProgressSummary } from '../hooks/useProgressSummary'
 import type { ErrorPattern } from '../types/progress'
@@ -42,6 +43,8 @@ export default function Progress() {
           Progress Overview
         </h1>
       </section>
+
+      <SuggestionsForYouCard />
 
       {summaryQuery.isLoading ? (
         <div aria-label="Loading progress" className="grid grid-cols-2 gap-gutter-md lg:grid-cols-4">
