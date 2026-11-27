@@ -14,6 +14,7 @@ export default function StudyPath() {
   const navigate = useNavigate()
   const pathQuery = useStudyPath()
   const completeMutation = useCompletePathActivity()
+  const failedActivityId = completeMutation.variables
   const units = pathQuery.data ?? noUnits
   const [selectedFilter, setSelectedFilter] = useState<PathFilter>('all')
   const [expandedUnitSelection, setExpandedUnitSelection] = useState<string | null | undefined>(undefined)
@@ -109,11 +110,11 @@ export default function StudyPath() {
       ) : (
         <>
           <PathHeader completedCount={completedCount} totalActivities={totalActivities} />
-          {completeMutation.isError && completeMutation.variables && (
+          {completeMutation.isError && failedActivityId && (
             <div className="flex flex-wrap items-center justify-between gap-gutter-sm rounded-default border border-light-error bg-light-error-container px-gutter-md py-gutter-sm text-light-on-error-container" role="alert">
               <span>{completeMutation.error.message}</span>
               <Button
-                onClick={() => completeMutation.mutate(completeMutation.variables!)}
+                onClick={() => completeMutation.mutate(failedActivityId)}
                 size="sm"
                 variant="secondary"
               >

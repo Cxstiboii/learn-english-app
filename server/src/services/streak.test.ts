@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import { test } from 'vitest'
 import { calculateDailyStreak, dateKeyInTimeZone } from './streak.js'
 
 test('counts consecutive qualifying days including today', () => {

@@ -21,7 +21,13 @@ export function useConversations() {
 export function useConversationMessages(id: string | null) {
   return useQuery({
     queryKey: chatKeys.messages(id ?? ''),
-    queryFn: () => getConversationMessages(id!),
+    queryFn: () => {
+      if (!id) {
+        throw new Error('Conversation ID is required.')
+      }
+
+      return getConversationMessages(id)
+    },
     enabled: Boolean(id),
   })
 }

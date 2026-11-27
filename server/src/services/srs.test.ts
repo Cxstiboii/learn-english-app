@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import { test } from 'vitest'
 import { calculateSM2 } from './srs.js'
 
 const reviewedAt = new Date('2026-01-10T12:30:00.000Z')

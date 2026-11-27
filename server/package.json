@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
     "start": "node dist/index.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/services/srs.test.ts src/services/streak.test.ts src/services/ai/aiClient.test.ts src/services/exerciseService.test.ts"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.10",
@@ -23,7 +26,13 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.2",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "supertest": "^7.3.2",
     "tsx": "^4.19.2",
-    "typescript": "~5.6.2"
+    "typescript": "~5.6.2",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2"
   }
 }
