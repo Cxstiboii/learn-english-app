@@ -1,13 +1,11 @@
 import { z } from 'zod'
-import { supabaseAdmin } from '../config/supabase.js'
 import { interviewSystemPrompt } from '../prompts/interview.js'
 import { generateJSON } from './ai/aiClient.js'
 import {
   cefrSchema,
   evaluationDisclaimer,
-  EvaluationServiceError,
   languageErrorSchema,
-  saveEvaluationErrors,
+  saveEvaluationAtomically,
 } from './evaluationService.js'
 
 const interviewAnswerEvaluationSchema = z.object({
@@ -29,6 +27,27 @@ const interviewEvaluationFieldsSchema = z.object({
   disclaimer: z.literal(evaluationDisclaimer),
 }).strict()
 
+const evaluatedAnswerSchema = z.object({
+  question: z.string(),
+  transcript: z.string(),
+  situationTaskMet: z.boolean(),
+  actionMet: z.boolean(),
+  resultMet: z.boolean(),
+  comments: z.array(z.string()),
+  improvedResponse: z.string(),
+  languageErrors: z.array(languageErrorSchema),
+}).strict()
+
+const savedInterviewEvaluationSchema = z.object({
+  sessionId: z.string().uuid(),
+  answers: z.array(evaluatedAnswerSchema),
+  summary: z.string(),
+  estimatedCEFR: cefrSchema,
+  strengths: z.array(z.string()),
+  suggestions: z.array(z.string()),
+  disclaimer: z.literal(evaluationDisclaimer),
+}).strict()
+
 export type InterviewEvaluationInput = {
   track: 'behavioral' | 'system-design' | 'role-salary'
   answers: Array<{
@@ -37,7 +56,11 @@ export type InterviewEvaluationInput = {
   }>
 }
 
-export async function evaluateInterview(userId: string, input: InterviewEvaluationInput) {
+export async function evaluateInterview(
+  userId: string,
+  idempotencyKey: string,
+  input: InterviewEvaluationInput,
+) {
   const evaluationSchema = interviewEvaluationFieldsSchema.extend({
     answers: z.array(interviewAnswerEvaluationSchema).length(input.answers.length),
   }).strict().superRefine((evaluation, context) => {
@@ -72,36 +95,7 @@ export async function evaluateInterview(userId: string, input: InterviewEvaluati
     improvedResponse: answer.improvedResponse,
     languageErrors: answer.languageErrors,
   }))
-  const { data: session, error } = await supabaseAdmin
-    .from('interview_sessions')
-    .insert({
-      user_id: userId,
-      track: input.track,
-      questions: input.answers.map(({ question }) => question),
-      answers: input.answers,
-      evaluation: {
-        answers: evaluatedAnswers,
-        summary: evaluation.summary,
-        estimatedCEFR: evaluation.estimatedCEFR,
-        strengths: evaluation.strengths,
-        suggestions: evaluation.suggestions,
-        disclaimer: evaluation.disclaimer,
-      },
-    })
-    .select('id')
-    .single()
-
-  if (error || !session) {
-    throw new EvaluationServiceError(500, 'INTERVIEW_SAVE_FAILED', 'Unable to save the interview evaluation.')
-  }
-
-  await saveEvaluationErrors(
-    userId,
-    evaluation.answers.flatMap(({ languageErrors }) => languageErrors),
-  )
-
-  return {
-    sessionId: session.id,
+  const result = {
     answers: evaluatedAnswers,
     summary: evaluation.summary,
     estimatedCEFR: evaluation.estimatedCEFR,
@@ -109,4 +103,20 @@ export async function evaluateInterview(userId: string, input: InterviewEvaluati
     suggestions: evaluation.suggestions,
     disclaimer: evaluation.disclaimer,
   }
+
+  return saveEvaluationAtomically({
+    userId,
+    idempotencyKey,
+    type: 'interview',
+    evaluation: {
+      track: input.track,
+      questions: input.answers.map(({ question }) => question),
+      answers: input.answers,
+      evaluation: result,
+    },
+    patterns: evaluation.answers.flatMap(({ languageErrors }) => languageErrors),
+    resultSchema: savedInterviewEvaluationSchema,
+    errorCode: 'INTERVIEW_SAVE_FAILED',
+    errorMessage: 'Unable to save the interview evaluation.',
+  })
 }

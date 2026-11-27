@@ -4,6 +4,7 @@ import { aiRateLimit } from '../middleware/aiRateLimit.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { toEvaluationError } from '../services/evaluationService.js'
 import { evaluateSpeaking } from '../services/speakingEvaluationService.js'
+import { getIdempotencyKey } from './evaluationRequest.js'
 
 export const speakingRouter = Router()
 
@@ -38,8 +39,9 @@ speakingRouter.use(requireAuth)
 
 speakingRouter.post('/evaluate', aiRateLimit, async (request, response, next) => {
   const userId = getUserId(request, response)
-  const input = requestSchema.safeParse(request.body)
   if (!userId) return
+
+  const input = requestSchema.safeParse(request.body)
   if (!input.success) {
     response.status(400).json({
       error: 'Invalid speaking evaluation request.',
@@ -48,8 +50,11 @@ speakingRouter.post('/evaluate', aiRateLimit, async (request, response, next) =>
     return
   }
 
+  const idempotencyKey = getIdempotencyKey(request, response)
+  if (!idempotencyKey) return
+
   try {
-    const result = await evaluateSpeaking(userId, input.data)
+    const result = await evaluateSpeaking(userId, idempotencyKey, input.data)
     response.status(201).json(result)
   } catch (error) {
     handleEvaluationError(error, response, next)

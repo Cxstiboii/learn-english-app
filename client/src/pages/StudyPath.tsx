@@ -6,6 +6,7 @@ import { TodayPanel } from '../components/path/TodayPanel'
 import { UnitCard } from '../components/path/UnitCard'
 import { Button, Card } from '../components/ui'
 import { useCompletePathActivity, useStudyPath } from '../hooks/useStudyPath'
+import { pathActivityRoutes } from '../services/path'
 import type { Activity, PathFilter, Unit } from '../types/path'
 
 const noUnits: Unit[] = []
@@ -83,9 +84,7 @@ export default function StudyPath() {
   }
 
   function handlePractice(activity: Activity) {
-    if (activity.type === 'Speaking') navigate('/speaking')
-    else if (activity.type === 'Vocabulario') navigate('/vocabulary')
-    else navigate('/chat')
+    navigate(pathActivityRoutes[activity.type])
   }
 
   const visibleUnits: Unit[] = filteredUnits

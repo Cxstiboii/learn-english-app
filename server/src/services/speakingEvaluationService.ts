@@ -1,13 +1,11 @@
 import { z } from 'zod'
-import { supabaseAdmin } from '../config/supabase.js'
 import { speakingSystemPrompt } from '../prompts/speaking.js'
 import { generateJSON } from './ai/aiClient.js'
 import {
   cefrSchema,
   evaluationDisclaimer,
-  EvaluationServiceError,
   languageErrorSchema,
-  saveEvaluationErrors,
+  saveEvaluationAtomically,
   scoreSchema,
 } from './evaluationService.js'
 
@@ -22,13 +20,21 @@ const speakingEvaluationSchema = z.object({
   disclaimer: z.literal(evaluationDisclaimer),
 }).strict()
 
+const savedSpeakingEvaluationSchema = speakingEvaluationSchema.extend({
+  sessionId: z.string().uuid(),
+})
+
 export type SpeakingEvaluationInput = {
   prompt: string
   transcript: string
   durationSeconds: number
 }
 
-export async function evaluateSpeaking(userId: string, input: SpeakingEvaluationInput) {
+export async function evaluateSpeaking(
+  userId: string,
+  idempotencyKey: string,
+  input: SpeakingEvaluationInput,
+) {
   const evaluation = await generateJSON({
     system: speakingSystemPrompt,
     messages: [{
@@ -39,10 +45,11 @@ export async function evaluateSpeaking(userId: string, input: SpeakingEvaluation
     maxTokens: 1400,
   })
 
-  const { data: session, error } = await supabaseAdmin
-    .from('speaking_sessions')
-    .insert({
-      user_id: userId,
+  return saveEvaluationAtomically({
+    userId,
+    idempotencyKey,
+    type: 'speaking',
+    evaluation: {
       prompt: input.prompt,
       transcript: input.transcript,
       scores: {
@@ -58,14 +65,10 @@ export async function evaluateSpeaking(userId: string, input: SpeakingEvaluation
         corrections: evaluation.corrections,
         disclaimer: evaluation.disclaimer,
       },
-    })
-    .select('id')
-    .single()
-
-  if (error || !session) {
-    throw new EvaluationServiceError(500, 'SPEAKING_SAVE_FAILED', 'Unable to save the speaking evaluation.')
-  }
-
-  await saveEvaluationErrors(userId, evaluation.corrections)
-  return { sessionId: session.id, ...evaluation }
+    },
+    patterns: evaluation.corrections,
+    resultSchema: savedSpeakingEvaluationSchema,
+    errorCode: 'SPEAKING_SAVE_FAILED',
+    errorMessage: 'Unable to save the speaking evaluation.',
+  })
 }

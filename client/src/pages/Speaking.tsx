@@ -7,6 +7,7 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { speakingPrompt } from '../content/speakingPrompt'
 import { useEvaluateSpeaking } from '../hooks/useSpeaking'
 import { Button } from '../components/ui'
+import { createIdempotencyKey } from '../lib/idempotency'
 
 export default function Speaking() {
   const {
@@ -48,6 +49,7 @@ export default function Speaking() {
       prompt: speakingPrompt.question,
       transcript,
       durationSeconds: Math.max(1, elapsedSeconds),
+      idempotencyKey: createIdempotencyKey(),
     })
   }
 

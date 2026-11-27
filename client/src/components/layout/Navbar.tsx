@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink, useNavigate, type NavLinkRenderProps } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useProgressSummary } from '../../hooks/useProgressSummary'
 
 const navigation = [
   { label: 'Study Path', to: '/path' },
@@ -8,6 +9,8 @@ const navigation = [
   { label: 'Vocabulary', to: '/vocabulary' },
   { label: 'Exercises', to: '/exercises' },
   { label: 'Speaking', to: '/speaking' },
+  { label: 'Writing Mock', to: '/mock/writing' },
+  { label: 'Interview', to: '/interview' },
   { label: 'Progress', to: '/progress' },
 ]
 
@@ -30,6 +33,7 @@ function renderLinkClass({ isActive }: NavLinkRenderProps, mobile = false) {
 export default function Navbar() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
+  const progressSummary = useProgressSummary()
   const [signOutError, setSignOutError] = useState('')
 
   async function handleSignOut() {
@@ -43,6 +47,12 @@ export default function Navbar() {
       )
     }
   }
+
+  const progressLabel = progressSummary.isLoading
+    ? 'Loading progress summary'
+    : progressSummary.isError || !progressSummary.data
+      ? 'Progress summary unavailable'
+      : `${progressSummary.data.dailyStreak} day streak, ${progressSummary.data.todayMinutes} of ${progressSummary.data.dailyGoalMinutes} minutes today`
 
   return (
     <header className="sticky top-0 z-20 border-b border-light-outline-variant bg-light-surface">
@@ -81,7 +91,18 @@ export default function Navbar() {
             >
               local_fire_department
             </span>
-            <span className="font-mono text-label-sm text-light-on-surface">14d · 42/60m</span>
+            <span
+              aria-label={progressLabel}
+              className="font-mono text-label-sm text-light-on-surface"
+              role="status"
+              title={progressSummary.isError ? 'Progress summary unavailable' : undefined}
+            >
+              {progressSummary.isLoading
+                ? '…'
+                : progressSummary.isError || !progressSummary.data
+                  ? '—'
+                  : `${progressSummary.data.dailyStreak}d · ${progressSummary.data.todayMinutes}/${progressSummary.data.dailyGoalMinutes}m`}
+            </span>
           </div>
           <span className="inline-flex items-center rounded-sm border border-light-outline-variant bg-light-surface-container-high px-2.5 py-1 font-mono text-label-sm text-light-on-surface">
             B1 → B2

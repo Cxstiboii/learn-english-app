@@ -1,12 +1,10 @@
 import { z } from 'zod'
-import { supabaseAdmin } from '../config/supabase.js'
 import { writingSystemPrompt } from '../prompts/writing.js'
 import { generateJSON } from './ai/aiClient.js'
 import {
   evaluationDisclaimer,
-  EvaluationServiceError,
   languageErrorSchema,
-  saveEvaluationErrors,
+  saveEvaluationAtomically,
   scoreSchema,
 } from './evaluationService.js'
 
@@ -23,6 +21,16 @@ const writingEvaluationSchema = z.object({
   disclaimer: z.literal(evaluationDisclaimer),
 }).strict()
 
+const savedWritingEvaluationSchema = z.object({
+  submissionId: z.string().uuid(),
+  scores: writingEvaluationSchema.shape.scores,
+  estimatedBand: scoreSchema,
+  suggestions: writingEvaluationSchema.shape.suggestions,
+  corrections: writingEvaluationSchema.shape.corrections,
+  disclaimer: z.literal(evaluationDisclaimer),
+  wordCount: z.number().int().nonnegative(),
+}).strict()
+
 export type WritingEvaluationInput = {
   examMode: 'toefl' | 'ielts'
   prompt: string
@@ -33,7 +41,11 @@ function countWords(text: string) {
   return text.trim().split(/\s+/u).filter(Boolean).length
 }
 
-export async function evaluateWriting(userId: string, input: WritingEvaluationInput) {
+export async function evaluateWriting(
+  userId: string,
+  idempotencyKey: string,
+  input: WritingEvaluationInput,
+) {
   const evaluation = await generateJSON({
     system: writingSystemPrompt,
     messages: [{
@@ -45,10 +57,11 @@ export async function evaluateWriting(userId: string, input: WritingEvaluationIn
   })
   const wordCount = countWords(input.response)
 
-  const { data: submission, error } = await supabaseAdmin
-    .from('writing_submissions')
-    .insert({
-      user_id: userId,
+  return saveEvaluationAtomically({
+    userId,
+    idempotencyKey,
+    type: 'writing',
+    evaluation: {
       exam_mode: input.examMode,
       prompt: input.prompt,
       response: input.response,
@@ -62,14 +75,10 @@ export async function evaluateWriting(userId: string, input: WritingEvaluationIn
         corrections: evaluation.corrections,
         disclaimer: evaluation.disclaimer,
       },
-    })
-    .select('id')
-    .single()
-
-  if (error || !submission) {
-    throw new EvaluationServiceError(500, 'WRITING_SAVE_FAILED', 'Unable to save the writing evaluation.')
-  }
-
-  await saveEvaluationErrors(userId, evaluation.corrections)
-  return { submissionId: submission.id, ...evaluation, wordCount }
+    },
+    patterns: evaluation.corrections,
+    resultSchema: savedWritingEvaluationSchema,
+    errorCode: 'WRITING_SAVE_FAILED',
+    errorMessage: 'Unable to save the writing evaluation.',
+  })
 }

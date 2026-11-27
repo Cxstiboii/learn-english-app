@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { NavLink, type NavLinkRenderProps } from 'react-router-dom'
 
 const sections = [
   {
@@ -32,6 +32,18 @@ const sections = [
     label: 'Practice speaking',
   },
   {
+    title: 'Writing Mock',
+    description: 'Practice timed writing tasks and get clear feedback on your response.',
+    to: '/mock/writing',
+    label: 'Start a writing mock',
+  },
+  {
+    title: 'Interview',
+    description: 'Practice common engineering interview questions in English.',
+    to: '/interview',
+    label: 'Practice an interview',
+  },
+  {
     title: 'Progress',
     description: 'Keep track of your learning and your next steps toward B2.',
     to: '/progress',
@@ -54,10 +66,15 @@ export default function Home() {
 
       <section aria-label="Learning sections" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {sections.map(({ title, description, to, label }) => (
-          <Link
+          <NavLink
+            end
             key={to}
             to={to}
-            className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
+            className={({ isActive }: NavLinkRenderProps) =>
+              `group rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md ${
+                isActive ? 'border-violet-300 ring-2 ring-violet-100' : 'border-slate-200'
+              }`
+            }
           >
             <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
             <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">{description}</p>
@@ -65,7 +82,7 @@ export default function Home() {
               {label}
               <span aria-hidden="true" className="transition group-hover:translate-x-1">→</span>
             </span>
-          </Link>
+          </NavLink>
         ))}
       </section>
     </div>

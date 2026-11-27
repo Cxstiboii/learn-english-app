@@ -12,7 +12,7 @@ app.use(cors({
     callback(null, origin === config.CLIENT_ORIGIN)
   },
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Authorization', 'Content-Type'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
 }))
 app.use(express.json({ limit: '96kb' }))
 app.use('/api', apiRouter)
@@ -20,6 +20,25 @@ app.use('/api', apiRouter)
 app.use((_request, response) => {
   response.status(404).json({ error: 'Route not found.' })
 })
+
+export function getSafeErrorMessage(status: number): string {
+  switch (status) {
+    case 400:
+      return 'Invalid request.'
+    case 401:
+      return 'Authentication required.'
+    case 403:
+      return 'Access denied.'
+    case 404:
+      return 'Resource not found.'
+    case 413:
+      return 'Request is too large.'
+    case 429:
+      return 'Too many requests.'
+    default:
+      return status >= 500 ? 'Internal server error.' : 'Request could not be completed.'
+  }
+}
 
 function errorHandler(
   error: unknown,
@@ -42,11 +61,7 @@ function errorHandler(
     status,
     errorType,
   })
-  const message = status < 500
-    ? 'Request is invalid or too large.'
-    : 'Internal server error.'
-
-  response.status(status).json({ error: message })
+  response.status(status).json({ error: getSafeErrorMessage(status) })
 }
 
 app.use(errorHandler)

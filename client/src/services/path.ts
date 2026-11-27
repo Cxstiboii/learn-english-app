@@ -4,6 +4,12 @@ export type UnitStatus = 'Completado' | 'En curso' | 'Disponible' | 'Próximo' |
 export type PathActivityStatus = 'completed' | 'active' | 'available' | 'upcoming'
 export type PathActivityType = 'Vocabulario' | 'Speaking' | 'Slack-Escritura'
 
+export const pathActivityRoutes: Record<PathActivityType, string> = {
+  Speaking: '/speaking',
+  Vocabulario: '/vocabulary',
+  'Slack-Escritura': '/mock/writing',
+}
+
 export interface PathActivity {
   id: string
   title: string

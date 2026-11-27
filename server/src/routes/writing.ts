@@ -4,6 +4,7 @@ import { aiRateLimit } from '../middleware/aiRateLimit.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { toEvaluationError } from '../services/evaluationService.js'
 import { evaluateWriting } from '../services/writingEvaluationService.js'
+import { getIdempotencyKey } from './evaluationRequest.js'
 
 export const writingRouter = Router()
 
@@ -38,8 +39,9 @@ writingRouter.use(requireAuth)
 
 writingRouter.post('/grade', aiRateLimit, async (request, response, next) => {
   const userId = getUserId(request, response)
-  const input = requestSchema.safeParse(request.body)
   if (!userId) return
+
+  const input = requestSchema.safeParse(request.body)
   if (!input.success) {
     response.status(400).json({
       error: 'Invalid writing evaluation request.',
@@ -48,8 +50,11 @@ writingRouter.post('/grade', aiRateLimit, async (request, response, next) => {
     return
   }
 
+  const idempotencyKey = getIdempotencyKey(request, response)
+  if (!idempotencyKey) return
+
   try {
-    const result = await evaluateWriting(userId, input.data)
+    const result = await evaluateWriting(userId, idempotencyKey, input.data)
     response.status(201).json(result)
   } catch (error) {
     handleEvaluationError(error, response, next)

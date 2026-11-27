@@ -11,6 +11,7 @@ import { formatDuration, useCountdown } from '../hooks/useCountdown'
 import { useGradeWriting } from '../hooks/useWriting'
 import { writingPrompts } from '../content/writingPrompts'
 import type { WritingMode } from '../types/writing'
+import { createIdempotencyKey } from '../lib/idempotency'
 
 export default function WritingMock() {
   const [mode, setMode] = useState<WritingMode>('toefl')
@@ -57,6 +58,7 @@ function WritingMockSession({ mode, onModeChange }: WritingMockSessionProps) {
       response: autosave.value,
       mode,
       prompt: prompt.prompt,
+      idempotencyKey: createIdempotencyKey(),
     })
   }
 

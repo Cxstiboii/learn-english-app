@@ -2,12 +2,9 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { getHealth } from '../controllers/healthController.js'
 import { supabaseAdmin } from '../config/supabase.js'
-import { AIServiceError, generateText } from '../services/ai/aiClient.js'
-import { tutorSystemPrompt } from '../prompts/tutor.js'
 import { aiRateLimit } from '../middleware/aiRateLimit.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { chatWithTutor, toChatError } from '../services/chatService.js'
-import { getTutorReply } from '../services/tutorService.js'
 import { activityRouter } from './activity.js'
 import { exercisesRouter } from './exercises.js'
 import { interviewRouter } from './interview.js'
@@ -144,18 +141,9 @@ apiRouter.get('/conversations/:id/messages', requireAuth, async (request, respon
   }
 })
 
-const tutorMessageSchema = z.object({
-  message: z.string().trim().min(1).max(maxAIInputCharacters),
-  level: z.enum(['B1', 'B2']).default('B1'),
-}).strict()
-
 const chatRequestSchema = z.object({
   conversationId: z.string().uuid().optional(),
   message: z.string().trim().min(1).max(maxAIInputCharacters),
-}).strict()
-
-const aiPingSchema = z.object({
-  message: z.string().trim().min(1).max(maxAIInputCharacters).optional(),
 }).strict()
 
 apiRouter.post('/chat', requireAuth, aiRateLimit, async (request, response, next) => {
@@ -188,59 +176,6 @@ apiRouter.post('/chat', requireAuth, aiRateLimit, async (request, response, next
         error: chatError.message,
         code: chatError.code,
       })
-      return
-    }
-    next(error)
-  }
-})
-
-apiRouter.post('/tutor/chat', requireAuth, aiRateLimit, async (request, response, next) => {
-  const input = tutorMessageSchema.safeParse(request.body)
-
-  if (!input.success) {
-    response.status(400).json({
-      error: 'Invalid chat request.',
-      details: input.error.flatten(),
-    })
-    return
-  }
-
-  try {
-    const reply = await getTutorReply(input.data)
-    response.json({ reply })
-  } catch (error) {
-    if (error instanceof AIServiceError) {
-      response.status(error.statusCode).json({ error: error.message, code: error.code })
-      return
-    }
-    next(error)
-  }
-})
-
-apiRouter.post('/ai/ping', requireAuth, aiRateLimit, async (request, response, next) => {
-  const input = aiPingSchema.safeParse(request.body ?? {})
-
-  if (!input.success) {
-    response.status(400).json({
-      error: 'Invalid AI ping request.',
-      details: input.error.flatten(),
-    })
-    return
-  }
-
-  try {
-    const reply = await generateText({
-      system: tutorSystemPrompt('B1'),
-      messages: [{
-        role: 'user',
-        content: input.data.message ?? 'Reply with: AI connection successful.',
-      }],
-      maxTokens: 80,
-    })
-    response.json({ ok: true, reply })
-  } catch (error) {
-    if (error instanceof AIServiceError) {
-      response.status(error.statusCode).json({ error: error.message, code: error.code })
       return
     }
     next(error)

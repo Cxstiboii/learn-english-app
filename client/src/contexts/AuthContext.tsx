@@ -36,16 +36,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     void supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (!active || receivedAuthEvent) return
-      if (sessionError) {
-        console.error('Unable to restore the Supabase session.', sessionError)
-        setError('Unable to verify your session. Refresh the page to try again.')
-      }
+      if (sessionError) throw sessionError
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setLoading(false)
-    }).catch((sessionError: unknown) => {
+    }).catch(() => {
       if (!active || receivedAuthEvent) return
-      console.error('Unable to restore the Supabase session.', sessionError)
+      // This diagnostic intentionally excludes session details and access tokens.
+      // eslint-disable-next-line no-console
+      console.error('Unable to restore the Supabase session.')
       setError('Unable to verify your session. Refresh the page to try again.')
       setLoading(false)
     })

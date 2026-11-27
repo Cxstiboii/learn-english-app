@@ -6,8 +6,15 @@ import { progressKeys } from './useProgressSummary'
 export function useEvaluateInterview() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ answers, track }: { answers: InterviewAnswer[]; track: InterviewTrack }) =>
-      evaluateInterview(answers, track),
+    mutationFn: ({
+      answers,
+      track,
+      idempotencyKey,
+    }: {
+      answers: InterviewAnswer[]
+      track: InterviewTrack
+      idempotencyKey: string
+    }) => evaluateInterview(answers, track, idempotencyKey),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: progressKeys.summary }),
   })
 }

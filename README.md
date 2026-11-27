@@ -76,11 +76,13 @@ Supabase dashboard/provider settings require access to your project and OAuth ap
 - `client/`: Vite, React, TypeScript, Tailwind, Supabase Auth client, and typed API services.
 - `server/`: Express API, Supabase access-token validation, and server-only LLM integration.
 
-All tutor and AI endpoints require a Supabase access token in the `Authorization: Bearer <token>` header. Provider credentials belong only in `server/.env`.
+All API endpoints except `GET /api/health` require a Supabase access token in the `Authorization: Bearer <token>` header. `GET /api/me` returns the authenticated user's profile. Provider credentials belong only in `server/.env`.
 
 The client uses TanStack Query for live data. Screen endpoint mapping: Tutor Chat uses `GET /api/conversations`, `GET /api/conversations/:id/messages`, and `POST /api/chat`; Vocabulary uses `GET /api/vocab/due`, `GET /api/vocab/stats`, `POST /api/vocab/:id/review`, `POST /api/vocab`, and `POST /api/vocab/generate`; Exercises uses `/api/exercises/weak-spots`, `/api/exercises/generate`, and `/api/exercises/:id/answer`; Speaking, Writing, and Interview use `/api/speaking/evaluate`, `/api/writing/grade`, and `/api/interview/evaluate`; Progress uses `GET /api/progress/summary` and `POST /api/activity/log`; Study Path uses `GET /api/path` and `POST /api/path/activities/:id/complete`.
 
-The AI service supports `openai`, `anthropic`, `google`, `deepseek`, `groq`, `mistral`, and `openrouter`. The temporary authenticated `POST /api/ai/ping` endpoint checks provider connectivity; it accepts an optional JSON body such as `{"message":"Say hello."}`. AI routes limit text input to 2,000 characters and allow 20 requests per user every 15 minutes.
+Speaking, Writing, and Interview evaluations require an `Idempotency-Key` UUID header. Replaying a request with the same key returns the saved evaluation without duplicating its error patterns or the one minute added to daily activity.
+
+The AI service supports `openai`, `anthropic`, `google`, `deepseek`, `groq`, `mistral`, and `openrouter`. AI-backed routes limit text input to 2,000 characters and allow 20 requests per user every 15 minutes.
 
 The tutor chat uses `POST /api/chat` with `{ "message": "...", "conversationId": "..." }`; `conversationId` is optional for a new conversation. Use `GET /api/conversations` to list the signed-in user's conversations and `GET /api/conversations/:id/messages` to load one. Each successful chat exchange adds one minute to today's activity.
 
@@ -96,7 +98,7 @@ The study path endpoints are `GET /api/path` and `POST /api/path/activities/:id/
 
 ## Supabase database
 
-In the Supabase Dashboard, open **SQL Editor** for your project and run `supabase/migrations/001_init.sql` through `supabase/migrations/006_progress_and_study_path.sql` in order. Finally, run `supabase/seed.sql` to load the five study-path units and their activities. The seed can be run again safely to update the study-path content.
+In the Supabase Dashboard, open **SQL Editor** for your project and run `supabase/migrations/001_init.sql` through `supabase/migrations/007_atomic_evaluation_persistence.sql` in order. If migrations `001`–`006` are already applied, run only `007_atomic_evaluation_persistence.sql`; do not rerun the previous migrations. Finally, run `supabase/seed.sql` to load the five study-path units and their activities. The seed can be run again safely to update the study-path content.
 
 ## Checks
 

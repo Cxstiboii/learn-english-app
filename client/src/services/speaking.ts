@@ -4,6 +4,7 @@ export interface SpeakingEvaluationRequest {
   prompt: string
   transcript: string
   durationSeconds: number
+  idempotencyKey: string
 }
 
 export interface SpeakingEvaluation {
@@ -24,8 +25,10 @@ export interface SpeakingEvaluation {
 }
 
 export function evaluateSpeaking(input: SpeakingEvaluationRequest) {
+  const { idempotencyKey, ...request } = input
   return apiFetch<SpeakingEvaluation>('/api/speaking/evaluate', {
     method: 'POST',
-    body: JSON.stringify(input),
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(request),
   })
 }

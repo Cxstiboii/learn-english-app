@@ -9,6 +9,7 @@ import { useCountdown, formatDuration } from '../hooks/useCountdown'
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition'
 import { interviewQuestions, interviewTrackLabels } from '../content/interviewQuestions'
 import { useEvaluateInterview } from '../hooks/useInterview'
+import { createIdempotencyKey } from '../lib/idempotency'
 import type {
   InterviewAnswer,
   InterviewEvaluation,
@@ -287,8 +288,19 @@ export default function Interview() {
   function handleEvaluate() {
     if (!isSummary || evaluatingTrack) return
     const track = activeTrack
+    const answers = buildInterviewAnswers(track)
+    const previousRequest = evaluationMutation.variables
+    const isRetry = evaluationMutation.isError
+      && previousRequest?.track === track
+      && JSON.stringify(previousRequest.answers) === JSON.stringify(answers)
     evaluationMutation.mutate(
-      { answers: buildInterviewAnswers(track), track },
+      {
+        answers,
+        track,
+        idempotencyKey: isRetry && previousRequest
+          ? previousRequest.idempotencyKey
+          : createIdempotencyKey(),
+      },
       {
         onSuccess: (result) => {
           setEvaluations((current) => ({ ...current, [track]: result }))

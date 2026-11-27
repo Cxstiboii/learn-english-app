@@ -4,6 +4,7 @@ import { aiRateLimit } from '../middleware/aiRateLimit.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { toEvaluationError } from '../services/evaluationService.js'
 import { evaluateInterview } from '../services/interviewEvaluationService.js'
+import { getIdempotencyKey } from './evaluationRequest.js'
 
 export const interviewRouter = Router()
 
@@ -40,8 +41,9 @@ interviewRouter.use(requireAuth)
 
 interviewRouter.post('/evaluate', aiRateLimit, async (request, response, next) => {
   const userId = getUserId(request, response)
-  const input = requestSchema.safeParse(request.body)
   if (!userId) return
+
+  const input = requestSchema.safeParse(request.body)
   if (!input.success) {
     response.status(400).json({
       error: 'Invalid interview evaluation request.',
@@ -50,8 +52,11 @@ interviewRouter.post('/evaluate', aiRateLimit, async (request, response, next) =
     return
   }
 
+  const idempotencyKey = getIdempotencyKey(request, response)
+  if (!idempotencyKey) return
+
   try {
-    const result = await evaluateInterview(userId, input.data)
+    const result = await evaluateInterview(userId, idempotencyKey, input.data)
     response.status(201).json(result)
   } catch (error) {
     handleEvaluationError(error, response, next)

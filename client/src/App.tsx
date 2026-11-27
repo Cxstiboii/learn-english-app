@@ -17,8 +17,6 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Auth />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/mock/writing" element={<WritingMock />} />
-        <Route path="/interview" element={<Interview />} />
         <Route element={<AppLayout />}>
           <Route index element={<Home />} />
           <Route path="chat" element={<Chat />} />
@@ -29,6 +27,8 @@ export default function App() {
           <Route path="path" element={<StudyPath />} />
           <Route path="*" element={<Navigate to="/path" replace />} />
         </Route>
+        <Route path="mock/writing" element={<WritingMock />} />
+        <Route path="interview" element={<Interview />} />
       </Route>
     </Routes>
   )

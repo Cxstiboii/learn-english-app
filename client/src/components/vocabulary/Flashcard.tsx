@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Badge, Button, Card } from '../ui'
 import type { VocabCard, ReviewRating } from '../../services/vocab'
 
@@ -35,6 +36,10 @@ export function Flashcard({
   onReveal,
   totalCards,
 }: FlashcardProps) {
+  useEffect(() => () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+  }, [])
+
   function speakTerm() {
     if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return
     window.speechSynthesis.cancel()

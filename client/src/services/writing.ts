@@ -15,9 +15,12 @@ export async function gradeWriting(input: {
   response: string
   mode: WritingMode
   prompt: string
+  idempotencyKey: string
 }): Promise<WritingEvaluation> {
+  const { idempotencyKey } = input
   const result = await apiFetch<WritingGradeResult>('/api/writing/grade', {
     method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({
       examMode: input.mode,
       prompt: input.prompt,

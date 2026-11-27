@@ -29,15 +29,33 @@ export const scoreSchema = z.number().min(0).max(9).refine(
 
 export const cefrSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
 
-export async function saveEvaluationErrors(
-  userId: string,
-  errors: Array<z.infer<typeof languageErrorSchema>>,
-) {
-  if (errors.length === 0) return
+export type EvaluationType = 'speaking' | 'writing' | 'interview'
 
-  const { error } = await supabaseAdmin.rpc('record_error_patterns', {
+export async function saveEvaluationAtomically<T>({
+  userId,
+  idempotencyKey,
+  type,
+  evaluation,
+  patterns,
+  resultSchema,
+  errorCode,
+  errorMessage,
+}: {
+  userId: string
+  idempotencyKey: string
+  type: EvaluationType
+  evaluation: Record<string, unknown>
+  patterns: Array<z.infer<typeof languageErrorSchema>>
+  resultSchema: z.ZodType<T>
+  errorCode: string
+  errorMessage: string
+}): Promise<T> {
+  const { data, error } = await supabaseAdmin.rpc('save_evaluation_atomically', {
     p_user_id: userId,
-    p_patterns: errors.map(({ category, original, corrected }) => ({
+    p_idempotency_key: idempotencyKey,
+    p_evaluation_type: type,
+    p_evaluation: evaluation,
+    p_patterns: patterns.map(({ category, original, corrected }) => ({
       category,
       example: original,
       correction: corrected,
@@ -45,12 +63,15 @@ export async function saveEvaluationErrors(
   })
 
   if (error) {
-    throw new EvaluationServiceError(
-      500,
-      'EVALUATION_ERRORS_SAVE_FAILED',
-      'The evaluation was saved, but its language errors could not be recorded.',
-    )
+    throw new EvaluationServiceError(500, errorCode, errorMessage)
   }
+
+  const result = resultSchema.safeParse(data)
+  if (!result.success) {
+    throw new EvaluationServiceError(500, errorCode, errorMessage)
+  }
+
+  return result.data
 }
 
 export function toEvaluationError(

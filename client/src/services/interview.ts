@@ -14,6 +14,7 @@ interface InterviewEvaluationResult {
 export async function evaluateInterview(
   answers: InterviewAnswer[],
   track: InterviewTrack,
+  idempotencyKey: string,
 ): Promise<InterviewEvaluation> {
   const completedAnswers = answers.filter(({ answer }) => answer.trim())
   if (completedAnswers.length === 0) {
@@ -22,6 +23,7 @@ export async function evaluateInterview(
 
   const result = await apiFetch<InterviewEvaluationResult>('/api/interview/evaluate', {
     method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({
       track,
       answers: completedAnswers.map(({ question, answer }) => ({
